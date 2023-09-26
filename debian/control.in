@@ -7,12 +7,21 @@ Uploaders:
 Build-Depends:
  autoconf,
  cryptsetup,
+ debhelper-compat(=10),
+ devscripts,
  dh-apparmor,
+ dh-golang,
+ dh-make,
  git,
+ golang-@golang_version@,
+ libdistro-info-perl,
  libfuse3-dev,
+ libglib2.0-dev,
  libseccomp-dev,
  libtool,
  pkg-config,
+ python3:any,
+ python3-yaml,
  squashfs-tools,
  zlib1g-dev
 Standards-Version: 3.9.8
