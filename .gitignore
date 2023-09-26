@@ -113,5 +113,6 @@ debian/singularity-ce*.debhelper.log
 debian/singularity-ce*.substvars
 debian/singularity-ce*/
 debian/tmp/
+debian/control
 
 .LICENSE_DEPENDENCIES.csv
