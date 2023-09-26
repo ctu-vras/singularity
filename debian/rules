@@ -26,8 +26,11 @@ export DH_GOLANG_INSTALL_ALL := 1
 BUILDDIR = $(CURDIR)/_build
 SRCDIR = $(BUILDDIR)/src
 
+export GO_VERSION=$(shell python3 -c "import yaml; f = open('$(CURDIR)/.circleci/config.yml', 'r'); y = yaml.safe_load(f); print(y['parameters']['go-version']['default'])")
+export golang_version=$(shell python3 -c "import yaml; f = open('$(CURDIR)/.circleci/config.yml', 'r'); y = yaml.safe_load(f); v = y['parameters']['go-version']['default']; print('.'.join(v.split('.')[:2]))")
+
 # Force use of a GO in /usr/local/go - the distro Go is likely to be too old
-export PATH := /usr/local/go/bin:$(PATH)
+export PATH := /usr/lib/go-$(golang_version)/bin:$(PATH)
 
 # Install to debian/tmp as dh_install will then split from there into
 # multiple packages according to our <package>.install files.
@@ -35,22 +38,26 @@ export DESTDIR=$(CURDIR)/debian/tmp
 
 # Use a GOPATH that's independent of anything that's already set
 export GOPATH=$(CURDIR)/_build/gopath
+export GOCACHE=$(BUILDDIR)
 
 %:
 	dh $@ --builddirectory=$(BUILDDIR) --buildsystem=golang
 
 override_dh_auto_clean:
 # Go makes some pkg cache etc. read-only, chmod before we try to remove
+	mkdir -p "$(BUILDDIR)"
 	-chmod -R +w _build
 	dh_auto_clean
 
 override_dh_auto_configure:
 # Override the changelog file by adding an entry for our git-derived version number
-	dch -D unstable -v "$(srcver)-$(dist)" -M "See: https://github.com/sylabs/singularity/blob/main/CHANGELOG.md"
-	dch -r "" -M
+	#dch -D unstable -v "$(srcver)-$(dist)" -M "See: https://github.com/sylabs/singularity/blob/main/CHANGELOG.md"
+	#dch -r "" -M
 
+	mkdir -p "$(BUILDDIR)"
 	dh_auto_configure --builddirectory=_build
 # Reset permissions lost in the copy to _build/src on Ubuntu
+	mkdir -p $(SRCDIR)/$(DH_GOPKG)
 	cd $(SRCDIR)/$(DH_GOPKG) && \
 	chmod +x mconfig scripts/* makeit/* e2e/testdata/*.sh
 
@@ -68,6 +75,7 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 # build standard install
+	mkdir -p $(SRCDIR)/$(DH_GOPKG)
 	cd $(SRCDIR)/$(DH_GOPKG) && \
 	make -C builddir
 
@@ -75,6 +83,7 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 # install standard build
+	mkdir -p $(SRCDIR)/$(DH_GOPKG)
 	cd $(SRCDIR)/$(DH_GOPKG) && \
 	make -C builddir install
 # Apparmor userns profile needed on Ubuntu >=23.10, or unconfined placeholder for older versions.
