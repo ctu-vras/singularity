@@ -6,11 +6,21 @@ Uploaders:
   Sylabs Community Packaging <community@sylabs.io>
 Build-Depends:
  cryptsetup,
+ debhelper-compat(=10),
+ devscripts,
+ dh-golang,
+ dh-make,
  git,
- libseccomp-dev,
+ golang-@golang_version@,
+ libdistro-info-perl,
+ libfuse-dev,
  libglib2.0-dev,
+ libseccomp-dev,
  pkg-config,
- squashfs-tools
+ python3:any,
+ python3-yaml,
+ squashfs-tools,
+ zlib1g-dev
 Standards-Version: 3.9.8
 Homepage: https://sylabs.io/singularity
 Vcs-Git: https://github.com/sylabs/singularity.git
