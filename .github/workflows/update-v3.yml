@@ -36,7 +36,8 @@ jobs:
         echo "Rebasing onto branch $branch"
         git reset --hard origin/cras
         git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v3 || true
-        git rebase --continue
+        echo "Rebase finished"
+        GIT_EDITOR=true git rebase --continue
         [ "$(git rev-parse cras-v3)" = "$(git rev-parse origin/cras-v3)" ] && exit 0
         git push --force origin cras-v3
         git checkout debian-release-v3
