@@ -34,6 +34,7 @@ jobs:
         git fetch origin
         git checkout cras
         git merge main --no-edit
+        [ "$(git rev-parse cras)" = "$(git rev-parse origin/cras)" ] && exit 0
         git push origin cras
         git checkout debian-release
         git reset --hard cras
