@@ -1,0 +1,42 @@
+name: Update from upstream
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+
+jobs:
+  update-upstream:
+    runs-on: ubuntu-latest
+    container: golang:latest
+    steps:
+    - uses: actions/checkout@master
+    - name: update
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        UPSTREAM: https://github.com/sylabs/singularity
+      run: |       
+        echo "MIRRORSITE=http://archive.ubuntu.com/ubuntu/" > /etc/pbuilderrc
+        apt-get -qq -y update
+        apt-get -qq -y install bash git python3 devscripts git-buildpackage
+        rm -rf singularity
+        git clone https://x-access-token:${GITHUB_TOKEN}@github.com/ctu-vras/singularity.git
+        cd singularity
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@users.noreply.github.com"
+        git remote add upstream "${UPSTREAM}"
+        git fetch upstream --tags
+        git merge upstream/main --no-edit
+        git push origin main --tags
+        git fetch origin
+        git checkout cras
+        git merge main --no-edit
+        git push origin cras
+        git checkout debian-release
+        git reset --hard cras
+        PATH=/usr/local/go/bin:$PATH debian/prepare.sh
+        git commit -m "Upstream release $(cat VERSION)"
+        git push --force origin debian-release
