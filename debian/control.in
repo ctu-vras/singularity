@@ -13,7 +13,7 @@ Build-Depends:
  dh-golang,
  dh-make,
  git,
- golang-@golang_version@,
+ golang-@golang_version@-go,
  libdistro-info-perl,
  libfuse3-dev,
  libglib2.0-dev,
