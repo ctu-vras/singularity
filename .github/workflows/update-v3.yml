@@ -35,7 +35,7 @@ jobs:
         branch="$(git ls-remote --heads -q upstream | cut -d'	' -f2 | sed 's#refs/heads/##' | grep 'release-3' | sort -n -k2 -t. -r | head -n1)"
         echo "Rebasing onto branch $branch"
         git reset --hard origin/cras
-        git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v3
+        git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v3 || true
         git rebase --continue
         [ "$(git rev-parse cras-v3)" = "$(git rev-parse origin/cras-v3)" ] && exit 0
         git push --force origin cras-v3
