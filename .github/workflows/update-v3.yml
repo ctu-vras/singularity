@@ -33,7 +33,8 @@ jobs:
         cp -r .github/workflows/rr-cache .git/
         git checkout cras-v3
         branch="$(git ls-remote --heads -q upstream | cut -d'	' -f2 | sed 's#refs/heads/##' | grep 'release-3' | sort -n -k2 -t. -r | head -n1)"
-        git reset --hard cras
+        echo "Rebasing onto branch $branch"
+        git reset --hard origin/cras
         git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v3
         git rebase --continue
         [ "$(git rev-parse cras-v3)" = "$(git rev-parse origin/cras-v3)" ] && exit 0
