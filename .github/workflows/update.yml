@@ -3,7 +3,13 @@ name: Update from upstream
 on:
   schedule:
     - cron: '0 * * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force creating the release branch'
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
       - main
@@ -18,7 +24,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         UPSTREAM: https://github.com/sylabs/singularity
-      run: |       
+      run: |
+        USER_INPUT=${{ inputs.force_release }}
+        FORCE_RELEASE=${USER_INPUT:-0}
         echo "MIRRORSITE=http://archive.ubuntu.com/ubuntu/" > /etc/pbuilderrc
         apt-get -qq -y update
         apt-get -qq -y install bash git python3 devscripts git-buildpackage
@@ -34,7 +42,8 @@ jobs:
         git fetch origin
         git checkout cras
         git merge main --no-edit
-        [ "$(git rev-parse cras)" = "$(git rev-parse origin/cras)" ] && exit 0
+        echo "FORCE_RELEASE=${FORCE_RELEASE}"
+        [ "${FORCE_RELEASE}" != "0" ] && [ "$(git rev-parse cras)" = "$(git rev-parse origin/cras)" ] && exit 0
         git push origin cras
         git checkout debian-release
         git reset --hard cras
