@@ -26,7 +26,7 @@ jobs:
         UPSTREAM: https://github.com/sylabs/singularity
       run: |
         USER_INPUT=${{ inputs.force_release }}
-        FORCE_RELEASE=${USER_INPUT:-0}
+        FORCE_RELEASE=${USER_INPUT:-false}
         echo "MIRRORSITE=http://archive.ubuntu.com/ubuntu/" > /etc/pbuilderrc
         apt-get -qq -y update
         apt-get -qq -y install bash git python3 devscripts git-buildpackage
@@ -43,7 +43,7 @@ jobs:
         git checkout cras
         git merge main --no-edit
         echo "FORCE_RELEASE=${FORCE_RELEASE}"
-        [ "${FORCE_RELEASE}" != "0" ] && [ "$(git rev-parse cras)" = "$(git rev-parse origin/cras)" ] && exit 0
+        [ "${FORCE_RELEASE}" != "true" ] && [ "$(git rev-parse cras)" = "$(git rev-parse origin/cras)" ] && exit 0
         git push origin cras
         git checkout debian-release
         git reset --hard cras
