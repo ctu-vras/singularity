@@ -1,0 +1,46 @@
+name: Update from release-3
+
+on:
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: [Update from upstream]
+    types: [completed]
+
+jobs:
+  update-upstream-v3:
+    runs-on: ubuntu-latest
+    container: golang:latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+    - uses: actions/checkout@master
+    - name: update
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        UPSTREAM: https://github.com/sylabs/singularity
+      run: |       
+        echo "MIRRORSITE=http://archive.ubuntu.com/ubuntu/" > /etc/pbuilderrc
+        apt-get -qq -y update
+        apt-get -qq -y install bash git python3 devscripts git-buildpackage
+        rm -rf singularity
+        git clone https://x-access-token:${GITHUB_TOKEN}@github.com/ctu-vras/singularity.git
+        cd singularity
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@users.noreply.github.com"
+        git config --global rerere.enabled true
+        git remote add upstream "${UPSTREAM}"
+        git fetch upstream
+        git fetch origin
+        cp -r .github/workflows/rr-cache .git/
+        git checkout cras-v3
+        branch="$(git ls-remote --heads -q upstream | cut -d'    ' -f2 | sed 's#refs/heads/##' | grep 'release-3' | sort -n -k2 -t. -r | head -n1)"
+        git reset --hard cras
+        git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v3
+        git rebase --continue
+        [ "$(git rev-parse cras-v3)" = "$(git rev-parse origin/cras-v3)" ] && exit 0
+        git push --force origin cras-v3
+        git checkout debian-release-v3
+        git reset --hard cras-v3
+        git submodule update --init
+        PATH=/usr/local/go/bin:$PATH debian/prepare.sh
+        git commit -m "Upstream release $(cat VERSION)"
+        git push --force origin debian-release-v3
