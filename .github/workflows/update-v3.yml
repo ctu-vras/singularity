@@ -32,7 +32,7 @@ jobs:
         git fetch origin
         cp -r .github/workflows/rr-cache .git/
         git checkout cras-v3
-        branch="$(git ls-remote --heads -q upstream | cut -d'    ' -f2 | sed 's#refs/heads/##' | grep 'release-3' | sort -n -k2 -t. -r | head -n1)"
+        branch="$(git ls-remote --heads -q upstream | cut -d'	' -f2 | sed 's#refs/heads/##' | grep 'release-3' | sort -n -k2 -t. -r | head -n1)"
         git reset --hard cras
         git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v3
         git rebase --continue
