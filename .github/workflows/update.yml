@@ -12,7 +12,7 @@ on:
         default: false
   push:
     branches:
-      - main
+      - cras
 
 jobs:
   update-upstream:
@@ -35,10 +35,11 @@ jobs:
         cd singularity
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@users.noreply.github.com"
+        git checkout main
         git remote add upstream "${UPSTREAM}"
         git fetch upstream --tags
-        git merge upstream/main --no-edit
-        git push origin main --tags
+        git reset --hard upstream/main
+        git push --force origin main --tags
         git fetch origin
         git checkout cras
         git merge main --no-edit
