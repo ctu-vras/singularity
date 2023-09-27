@@ -38,6 +38,7 @@ jobs:
         git push origin cras
         git checkout debian-release
         git reset --hard cras
+        git submodule update --init
         PATH=/usr/local/go/bin:$PATH debian/prepare.sh
         git commit -m "Upstream release $(cat VERSION)"
         git push --force origin debian-release
