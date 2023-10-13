@@ -10,6 +10,8 @@
   (`$HOME/.singularity/docker-config.json`). The commands `pull`, `push`, `run`,
   `exec`, `shell`, and `instance start` can now also be passed a `--authfile
   <path>` option, to read OCI registry credentials from this custom file.
+- Added the upcoming NVIDIA driver library `libnvidia-gpucomp.so` to the
+  list of libraries to add to NVIDIA GPU-enabled containers.
 
 ### Bug Fixes
 
@@ -18,6 +20,8 @@
 - Fix problem where credentials locally stored with `registry login` command
   were not usable in some execution flows. Run `registry login` again with
   latest version to ensure credentials are stored correctly.
+- Don't fail in a yum bootstrap on systems where the _db_backend rpm macros is
+  not defined (EL <8).
 
 ## 4.0.0 \[2023-09-19\]
 
