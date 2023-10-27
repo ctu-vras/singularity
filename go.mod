@@ -17,14 +17,14 @@ require (
 	github.com/containers/common v0.56.0
 	github.com/containers/image/v5 v5.28.0
 	github.com/cyphar/filepath-securejoin v0.2.4
-	github.com/docker/cli v24.0.6+incompatible
+	github.com/docker/cli v24.0.7+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v24.0.6+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.15.0
 	github.com/go-log/log v0.2.0
 	github.com/google/go-containerregistry v0.16.1
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/gosimple/slug v1.13.1
 	github.com/moby/term v0.5.0
 	github.com/opencontainers/go-digest v1.0.0
