@@ -51,13 +51,13 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/sylabs/json-resp v0.9.0
 	github.com/sylabs/oci-tools v0.6.0
-	github.com/sylabs/scs-build-client v0.8.1-0.20231109151203-2455399d04e0
+	github.com/sylabs/scs-build-client v0.9.2
 	github.com/sylabs/scs-key-client v0.7.3
 	github.com/sylabs/scs-library-client v1.4.5
 	github.com/sylabs/sif/v2 v2.15.0
 	github.com/vbauerster/mpb/v8 v8.6.2
 	go.etcd.io/bbolt v1.3.8
-	golang.org/x/crypto v0.14.0
+	golang.org/x/crypto v0.15.0
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.14.0
 	golang.org/x/term v0.14.0
