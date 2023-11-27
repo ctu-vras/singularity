@@ -33,7 +33,6 @@ require (
 	github.com/gosimple/slug v1.13.1
 	github.com/moby/buildkit v0.12.3
 	github.com/moby/term v0.5.0
-	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc5
 	github.com/opencontainers/runc v1.1.10
 	github.com/opencontainers/runtime-spec v1.1.0
@@ -53,9 +52,9 @@ require (
 	github.com/sylabs/oci-tools v0.7.0
 	github.com/sylabs/scs-build-client v0.9.2
 	github.com/sylabs/scs-key-client v0.7.3
-	github.com/sylabs/scs-library-client v1.4.5
+	github.com/sylabs/scs-library-client v1.3.5
 	github.com/sylabs/sif/v2 v2.15.0
-	github.com/vbauerster/mpb/v8 v8.6.2
+	github.com/vbauerster/mpb/v8 v8.7.0
 	go.etcd.io/bbolt v1.3.8
 	golang.org/x/crypto v0.15.0
 	golang.org/x/sync v0.5.0
@@ -175,6 +174,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/networkplumbing/go-nft v0.3.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
+	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/package-url/packageurl-go v0.1.1-0.20220428063043-89078438f170 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/proglottis/gpgme v0.1.3 // indirect
