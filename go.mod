@@ -12,7 +12,7 @@ require (
 	github.com/buger/goterm v1.0.4
 	github.com/buger/jsonparser v1.1.1
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.9
+	github.com/containerd/containerd v1.7.10
 	github.com/containerd/continuity v0.4.3
 	github.com/containerd/go-runc v1.1.0
 	github.com/containernetworking/cni v1.1.2
@@ -28,7 +28,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/go-log/log v0.2.0
 	github.com/gofrs/flock v0.8.1
-	github.com/google/go-containerregistry v0.16.1
+	github.com/google/go-containerregistry v0.17.0
 	github.com/google/uuid v1.4.0
 	github.com/gosimple/slug v1.13.1
 	github.com/moby/buildkit v0.12.3
