@@ -533,7 +533,8 @@ func (c configTests) configGlobal(t *testing.T) {
 			profile:        e2e.UserProfile,
 			directive:      "allow kernel squashfs",
 			directiveValue: "no",
-			exit:           255,
+			exit:           0,
+			resultOp:       e2e.ExpectError(e2e.ContainMatch, "Mounting image with FUSE"),
 		},
 		{
 			name:           "AllowKernelSquashfsYes_Container",
@@ -542,6 +543,7 @@ func (c configTests) configGlobal(t *testing.T) {
 			directive:      "allow kernel squashfs",
 			directiveValue: "yes",
 			exit:           0,
+			resultOp:       e2e.ExpectError(e2e.UnwantedContainMatch, "Mounting image with FUSE"),
 		},
 		// Standalone ext3 rootfs
 		{
@@ -550,7 +552,8 @@ func (c configTests) configGlobal(t *testing.T) {
 			profile:        e2e.UserProfile,
 			directive:      "allow kernel extfs",
 			directiveValue: "no",
-			exit:           255,
+			exit:           0,
+			resultOp:       e2e.ExpectError(e2e.ContainMatch, "Mounting image with FUSE"),
 		},
 		{
 			name:           "AllowKernelExtfsYes_Container",
@@ -559,6 +562,7 @@ func (c configTests) configGlobal(t *testing.T) {
 			directive:      "allow kernel extfs",
 			directiveValue: "yes",
 			exit:           0,
+			resultOp:       e2e.ExpectError(e2e.UnwantedContainMatch, "Mounting image with FUSE"),
 		},
 		// Standalone squashfs as an overlay
 		{
@@ -635,7 +639,8 @@ func (c configTests) configGlobal(t *testing.T) {
 			profile:        e2e.UserProfile,
 			directive:      "allow kernel squashfs",
 			directiveValue: "no",
-			exit:           255,
+			exit:           0,
+			resultOp:       e2e.ExpectError(e2e.ContainMatch, "Mounting image with FUSE"),
 		},
 		{
 			name:           "AllowKernelSquashfsYes_SIF",
@@ -644,6 +649,7 @@ func (c configTests) configGlobal(t *testing.T) {
 			directive:      "allow kernel squashfs",
 			directiveValue: "yes",
 			exit:           0,
+			resultOp:       e2e.ExpectError(e2e.UnwantedContainMatch, "Mounting image with FUSE"),
 		},
 		// Encrypted squashFS rootfs in SIF
 		{

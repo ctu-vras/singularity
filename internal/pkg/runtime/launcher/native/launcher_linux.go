@@ -32,6 +32,7 @@ import (
 	"github.com/sylabs/singularity/v4/internal/pkg/security"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/bin"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/env"
+	"github.com/sylabs/singularity/v4/internal/pkg/util/fs/fuse"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/fs/squashfs"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/gpu"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/starter"
@@ -977,9 +978,8 @@ func (l *Launcher) setCgroups(instanceName string) error {
 	return nil
 }
 
-// PrepareImage perfoms any image preparation required before execution.
-// This is currently limited to extraction or FUSE mount when using the user namespace,
-// and activating any image driver plugins that might handle the image mount.
+// PrepareImage performs any image preparation required before execution.
+// This is currently limited to extraction or FUSE mount.
 func (l *Launcher) prepareImage(c context.Context, image string) error {
 	if strings.HasPrefix(image, "instance://") {
 		return nil
@@ -987,6 +987,8 @@ func (l *Launcher) prepareImage(c context.Context, image string) error {
 
 	insideUserNs, _ := namespaces.IsInsideUserNamespace(os.Getpid())
 	isUserNs := insideUserNs || l.cfg.Namespaces.User
+	noKernelMount := l.cfg.TmpSandbox || isUserNs || l.cfg.SIFFUSE
+	tryFuse := !l.cfg.TmpSandbox
 
 	img, err := imgutil.Init(image, false)
 	if err != nil {
@@ -1002,20 +1004,20 @@ func (l *Launcher) prepareImage(c context.Context, image string) error {
 	case imgutil.SANDBOX:
 		return nil
 	case imgutil.SQUASHFS:
-		if isUserNs || l.cfg.SIFFUSE {
-			return l.prepareSquashfs(c, img, l.cfg.SIFFUSE)
+		if !l.engineConfig.File.AllowKernelSquashfs || noKernelMount {
+			return l.prepareSquashfs(c, img, tryFuse)
 		}
 		// setuid, kernel squashfs permitted, fuse not requested - no action needed
 		return nil
 	case imgutil.ENCRYPTSQUASHFS:
-		if isUserNs || l.cfg.SIFFUSE {
+		if !l.engineConfig.File.AllowKernelSquashfs || noKernelMount {
 			return fmt.Errorf("encrypted SIF files are only supported in setuid mode, with kernel mounts")
 		}
 		// setuid, kernel squashfs permitted, fuse not requested - no action needed
 		return nil
 	case imgutil.EXT3:
-		if isUserNs || l.cfg.SIFFUSE {
-			return l.prepareExtfs(c, img, l.cfg.SIFFUSE)
+		if !l.engineConfig.File.AllowKernelExtfs || noKernelMount {
+			return l.prepareExtfs(c, img, tryFuse)
 		}
 		// setuid, kernel extfs permitted, fuse not requested - no action needed
 		return nil
@@ -1069,9 +1071,46 @@ func (l *Launcher) prepareSquashfs(ctx context.Context, img *imgutil.Image, tryF
 	return fmt.Errorf("extraction failed: %v", err)
 }
 
-func (l *Launcher) prepareExtfs(_ context.Context, _ *imgutil.Image, _ bool) error {
-	// TODO - Enable fuse2fs handling
-	return fmt.Errorf("extfs images can only be run in setuid mode with kernel extfs mounts enabled")
+func (l *Launcher) prepareExtfs(ctx context.Context, img *imgutil.Image, tryFuse bool) error {
+	if !tryFuse {
+		return fmt.Errorf("extfs images must be kernel or FUSE mounted, extraction to a temporary sandbox is not supported")
+	}
+
+	allowOther := false
+	// In fakeroot mode, the users is able to assume a subuid/subgid, so allow
+	// others to access the FUSE mount.
+	if l.cfg.Fakeroot {
+		allowOther = true
+	}
+
+	tempDir, imageDir, err := mkContainerDirs()
+	if err != nil {
+		return err
+	}
+
+	im := fuse.ImageMount{
+		Type:       image.EXT3,
+		UID:        os.Getuid(),
+		GID:        os.Getgid(),
+		Readonly:   l.cfg.Writable,
+		SourcePath: filepath.Clean(img.Path),
+		AllowOther: allowOther,
+	}
+	im.SetMountPoint(filepath.Clean(imageDir))
+
+	sylog.Infof("Mounting image with FUSE.")
+	if err := im.Mount(ctx); err != nil {
+		if err2 := os.RemoveAll(tempDir); err2 != nil {
+			sylog.Errorf("Couldn't remove temporary directory %s: %s", tempDir, err2)
+		}
+		return err
+	}
+
+	l.engineConfig.SetImage(imageDir)
+	l.engineConfig.SetImageFuse(true)
+	l.engineConfig.SetDeleteTempDir(tempDir)
+	l.generator.AddProcessEnv("SINGULARITY_CONTAINER", imageDir)
+	return nil
 }
 
 // mkContainerDirs creates a tempDir, with a nested 'root' imageDir that an image can be placed into.
