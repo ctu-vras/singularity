@@ -1,5 +1,15 @@
 # SingularityCE Changelog
 
+## Changes Since Last Release
+
+### Bug Fixes
+
+- Set OCI runtime-spec annotations that are required by the documented
+  image-spec conversion process.
+- In `--oci` mode always set inner ID map based on host user, not `USER` in OCI
+  container. Fixes incorrect permissions for files owned by `USER` in the
+  container.
+
 ## 4.1.1 \[2024-02-01\]
 
 ### Security Related Fixes
