@@ -11,7 +11,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/buger/goterm v1.0.4
 	github.com/buger/jsonparser v1.1.1
-	github.com/containerd/containerd v1.7.14
+	github.com/containerd/containerd v1.7.15
 	github.com/containerd/continuity v0.4.3
 	github.com/containerd/go-runc v1.1.0
 	github.com/containernetworking/cni v1.1.2
@@ -65,7 +65,7 @@ require (
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.5.1
 	mvdan.cc/sh/v3 v3.7.1-0.20231014181306-8b673862efc6
-	tags.cncf.io/container-device-interface v0.7.0
+	tags.cncf.io/container-device-interface v0.7.1
 	tags.cncf.io/container-device-interface/specs-go v0.7.0
 )
 
