@@ -20,9 +20,9 @@ require (
 	github.com/containers/image/v5 v5.30.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.4
-	github.com/docker/cli v26.0.1+incompatible
+	github.com/docker/cli v26.0.2+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v26.0.1+incompatible
+	github.com/docker/docker v26.0.2+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.16.0
 	github.com/go-log/log v0.2.0
@@ -201,7 +201,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
 	golang.org/x/mod v0.15.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
