@@ -59,29 +59,6 @@ sudo yum install -y \
     zlib-devel
 ```
 
-### RHEL / CentOS 7
-
-```sh
-# Install basic tools for compiling
-sudo yum groupinstall -y 'Development Tools'
-# Install RPM packages for dependencies
-sudo yum install -y \
-    autoconf \
-    automake \
-    cryptsetup \
-    fuse \
-    fuse3 \
-    fuse3-devel \
-    git \
-    glib2-devel \
-    libseccomp-devel \
-    libtool \
-    runc \
-    squashfs-tools \
-    wget \
-    zlib-devel
-```
-
 ### SLES / openSUSE Leap
 
 ```sh
@@ -127,7 +104,7 @@ above. No further action is necessary.
 On Fedora, the `squashfs-tools` package includes `sqfstar`. No further action is
 necessary.
 
-### RHEL / Alma Linux / Rocky Linux / CentOS
+### RHEL / Alma Linux / Rocky Linux
 
 On RHEL and derivatives, the `squashfs-tools-ng` package is now
 available in the EPEL repositories.
@@ -143,16 +120,8 @@ Follow the [EPEL Quickstart](https://docs.fedoraproject.org/en-US/epel/#_quickst
 for you distribution to enable the EPEL repository. Install `squashfs-tools-ng` with
 `dnf` or `yum`.
 
-#### EL 8 / 9
-
 ```sh
 sudo dnf install squashfs-tools-ng
-```
-
-#### EL 7
-
-```sh
-sudo yum install squashfs-tools-ng
 ```
 
 ### SLES / openSUSE Leap
@@ -174,7 +143,7 @@ _**NOTE:** if you are updating Go from a older version, make sure you remove
 `/usr/local/go` before reinstalling it._
 
 ```sh
-export VERSION=1.21.9 OS=linux ARCH=amd64  # change this as you need
+export VERSION=1.21.10 OS=linux ARCH=amd64  # change this as you need
 
 wget -O /tmp/go${VERSION}.${OS}-${ARCH}.tar.gz \
   https://dl.google.com/go/go${VERSION}.${OS}-${ARCH}.tar.gz
@@ -232,11 +201,11 @@ cd singularity
 By default your clone will be on the `main` branch which is where development
 of SingularityCE happens. To build a specific version of SingularityCE, check
 out a [release tag](https://github.com/sylabs/singularity/tags) before
-compiling. E.g. to build the 4.1.2 release, checkout the
-`v4.1.2` tag:
+compiling. E.g. to build the 4.1.3 release, checkout the
+`v4.1.3` tag:
 
 ```sh
-git checkout --recurse-submodules v4.1.2
+git checkout --recurse-submodules v4.1.3
 ```
 
 ## Compiling SingularityCE
@@ -266,12 +235,51 @@ install prefix to a different path:
 
 See the output of `./mconfig -h` for available options.
 
+## Apparmor Profile (Ubuntu 24.04+)
+
+Beginning with the 24.04 LTS release, Ubuntu does not permit applications to
+create unprivileged user namespaces by default.
+
+If you install SingularityCE from a GitHub release `.deb` package then an
+apparmor profile will be installed that permits SingularityCE to create
+unprivileged user namespaces.
+
+If you install SingularityCE from source you must configure apparmor.
+Create an apparmor profile file at `/etc/apparmor.d/singularity-ce`:
+
+```sh
+sudo tee /etc/apparmor.d/singularity-ce << 'EOF'
+# Permit unprivileged user namespace creation for SingularityCE starter
+abi <abi/4.0>,
+include <tunables/global>
+
+profile singularity-ce /usr/local/libexec/singularity/bin/starter{,-suid} flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/singularity-ce>
+}
+EOF
+```
+
+Modify the path beginning `/usr/local` if you specified a non-default `--prefix`
+when configuring and installing SingularityCE.
+
+Reload the system apparmor profiles after you have created the file:
+
+```sh
+sudo systemctl reload apparmor
+```
+
+SingularityCE will now be able to create unprivileged user namespaces on your
+system.
+
 ## Building & Installing from an RPM
 
-On a RHEL / CentOS / Fedora machine you can build a SingularityCE into an RPM
-package, and install it from the RPM. This is useful if you need to install
-Singularity across multiple machines, or wish to manage all software via
-`yum/dnf`.
+On a RHEL / AlmaLinux / Rocky Linux / Fedora machine you can build a
+SingularityCE into an RPM package, and install it from the RPM. This is useful
+if you need to install Singularity across multiple machines, or wish to manage
+all software via `yum/dnf`.
 
 To build the RPM, you first need to install the
 [system dependencies](#install-system-dependencies) and
@@ -287,7 +295,7 @@ build and install the RPM like this:
 <!-- markdownlint-disable MD013 -->
 
 ```sh
-export VERSION=4.1.2  # this is the singularity version, change as you need
+export VERSION=4.1.3  # this is the singularity version, change as you need
 
 # Fetch the source
 wget https://github.com/sylabs/singularity/releases/download/v${VERSION}/singularity-ce-${VERSION}.tar.gz

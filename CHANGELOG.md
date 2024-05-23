@@ -1,6 +1,25 @@
 # SingularityCE Changelog
 
-## Change Since Last Release
+## Changes Since Last Release
+
+### New Features & Functionality
+
+- It is now possible to use multiple environment variable files using the
+  `--env-file` flag, files can be specified as a comma-separated list or
+  by using the flag multiple times. Variables defined in later files take
+  precedence.
+- `singularity.conf` now accepts setting the `allow uts ns` option, and can
+  invalidate the use of the `--uts` and `--hostname` flags.
+
+### Bug Fixes
+
+- Avoid unnecessary copying / extraction of OCI images and Docker tarballs into
+  a layout directory when they are directly accessible as a local file /
+  directory.
+- Avoid unnecessary intermediate temporary image layout when building from
+  Dockerfile to OCI-SIF.
+
+## 4.1.3 \[2024-05-08\]
 
 ### Requirements
 
@@ -12,6 +31,10 @@
 - Fix storage of credentials for `docker.io` to behave the same as for
   `index.docker.io`.
 - Improve documentation for `remote list` command.
+- Don't fail with lack of descriptor capacity when writing OCI images with many
+  layers to OCI-SIF.
+- Ensure a fixed number of spare descriptors is present in the OCI-SIF when
+  pulling an OCI image.
 
 ## 4.1.2 \[2024-03-05\]
 

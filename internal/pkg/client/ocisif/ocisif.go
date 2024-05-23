@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Sylabs Inc. All rights reserved.
+// Copyright (c) 2023-2024 Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -42,6 +42,12 @@ const (
 	// cacheSuffixMultiLayer is appended to the cached filename of OCI-SIF
 	// images that have multiple layers. Single layer images have no suffix.
 	cacheSuffixMultiLayer = ".ml"
+
+	// spareDescrptiorCapacity is the number of spare descriptors to allocate
+	// when writing an image to an OCI-SIF file. This is to provide additional
+	// descriptors, beyond those needed for the OCI image, to add e.g.
+	// overlay(s) / signatures without re-writing the OCI-SIF.
+	spareDescriptorCapacity = 8
 )
 
 var ErrFailedSquashfsConversion = errors.New("could not convert layer to squashfs")
@@ -127,7 +133,7 @@ func createOciSif(ctx context.Context, tOpts *ociimage.TransportOptions, imgCach
 		return err
 	}
 
-	img, err := ociimage.FetchToLayout(ctx, tOpts, imgCache, imageSrc, tmpDir)
+	img, err := ociimage.LocalImage(ctx, tOpts, imgCache, imageSrc, tmpDir)
 	if err != nil {
 		return fmt.Errorf("while fetching OCI image: %w", err)
 	}
@@ -179,7 +185,7 @@ func writeImageToOCISif(img ggcrv1.Image, imageDest string) error {
 	ii := ggcrmutate.AppendManifests(empty.Index, ggcrmutate.IndexAddendum{
 		Add: img,
 	})
-	return ocisif.Write(imageDest, ii)
+	return ocisif.Write(imageDest, ii, ocisif.OptWriteWithSpareDescriptorCapacity(spareDescriptorCapacity))
 }
 
 // convertImageToOciSif will convert an image to an oci-sif with squashfs layer
@@ -203,7 +209,7 @@ func convertImageToOciSif(img ggcrv1.Image, digest ggcrv1.Hash, imageDest, workD
 	ii := ggcrmutate.AppendManifests(empty.Index, ggcrmutate.IndexAddendum{
 		Add: img,
 	})
-	return ocisif.Write(imageDest, ii)
+	return ocisif.Write(imageDest, ii, ocisif.OptWriteWithSpareDescriptorCapacity(spareDescriptorCapacity))
 }
 
 func imgLayersToSquashfs(img ggcrv1.Image, digest ggcrv1.Hash, workDir string) (sqfsImage ggcrv1.Image, err error) {
