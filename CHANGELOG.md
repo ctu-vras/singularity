@@ -10,6 +10,8 @@
   precedence.
 - `singularity.conf` now accepts setting the `allow uts ns` option, and can
   invalidate the use of the `--uts` and `--hostname` flags.
+- A new `singularity data package` command allows files and directories to
+  be packaged into an OCI-SIF data container.
 
 ### Bug Fixes
 
@@ -18,6 +20,12 @@
   directory.
 - Avoid unnecessary intermediate temporary image layout when building from
   Dockerfile to OCI-SIF.
+
+## Bug Fixes
+
+- `%files from` in a definition file will now correctly copy symlinks that point
+  to a target above the destination directory, but inside the destination stage
+  rootfs.
 
 ## 4.1.3 \[2024-05-08\]
 
