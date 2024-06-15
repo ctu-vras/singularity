@@ -33,7 +33,7 @@ require (
 	github.com/moby/sys/sequential v0.5.0
 	github.com/moby/term v0.5.0
 	github.com/opencontainers/image-spec v1.1.0
-	github.com/opencontainers/runc v1.1.12
+	github.com/opencontainers/runc v1.1.13
 	github.com/opencontainers/runtime-spec v1.2.0
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230914150019-408c51e934dc
 	github.com/opencontainers/selinux v1.11.0
@@ -49,7 +49,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/sylabs/json-resp v0.9.2
-	github.com/sylabs/oci-tools v0.9.0
+	github.com/sylabs/oci-tools v0.10.0
 	github.com/sylabs/scs-build-client v0.9.5
 	github.com/sylabs/scs-key-client v0.7.5
 	github.com/sylabs/scs-library-client v1.4.8
