@@ -46,13 +46,13 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	github.com/sigstore/sigstore v1.8.4
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/sylabs/json-resp v0.9.2
+	github.com/sylabs/json-resp v0.9.3
 	github.com/sylabs/oci-tools v0.10.0
-	github.com/sylabs/scs-build-client v0.9.5
-	github.com/sylabs/scs-key-client v0.7.5
-	github.com/sylabs/scs-library-client v1.4.8
+	github.com/sylabs/scs-build-client v0.9.6
+	github.com/sylabs/scs-key-client v0.7.6
+	github.com/sylabs/scs-library-client v1.4.9
 	github.com/sylabs/sif/v2 v2.16.0
 	github.com/sylabs/squashfs v0.6.1
 	github.com/vbauerster/mpb/v8 v8.7.3
@@ -101,7 +101,7 @@ require (
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/containers/storage v1.54.0 // indirect
 	github.com/coreos/go-iptables v0.7.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/creack/pty v1.1.18 // indirect
 	github.com/d2g/dhcp4 v0.0.0-20170904100407-a1d1b6c41b1c // indirect
 	github.com/d2g/dhcp4client v1.0.0 // indirect
@@ -124,7 +124,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
-	github.com/gorilla/websocket v1.5.1 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
