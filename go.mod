@@ -19,13 +19,13 @@ require (
 	github.com/containers/image/v5 v5.31.1
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.5
-	github.com/docker/cli v27.0.2+incompatible
+	github.com/docker/cli v27.0.3+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v27.0.2+incompatible
+	github.com/docker/docker v27.0.3+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.17.0
 	github.com/go-log/log v0.2.0
-	github.com/gofrs/flock v0.9.0
+	github.com/gofrs/flock v0.11.0
 	github.com/google/go-containerregistry v0.19.2
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
@@ -40,7 +40,7 @@ require (
 	github.com/opencontainers/umoci v0.4.7
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pkg/errors v0.9.1
-	github.com/samber/lo v1.42.0
+	github.com/samber/lo v1.44.0
 	github.com/sebdah/goldie/v2 v2.5.3
 	github.com/seccomp/libseccomp-golang v0.10.0
 	github.com/shopspring/decimal v1.4.0
@@ -53,7 +53,7 @@ require (
 	github.com/sylabs/scs-build-client v0.9.6
 	github.com/sylabs/scs-key-client v0.7.6
 	github.com/sylabs/scs-library-client v1.4.9
-	github.com/sylabs/sif/v2 v2.17.0
+	github.com/sylabs/sif/v2 v2.17.1
 	github.com/sylabs/squashfs v0.6.1
 	github.com/vbauerster/mpb/v8 v8.7.3
 	go.etcd.io/bbolt v1.3.10
