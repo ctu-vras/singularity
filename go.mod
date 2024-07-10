@@ -1,6 +1,6 @@
 module github.com/sylabs/singularity/v4
 
-go 1.21.0
+go 1.21.5
 
 require (
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
@@ -27,7 +27,7 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/go-log/log v0.2.0
 	github.com/gofrs/flock v0.12.0
-	github.com/google/go-containerregistry v0.19.2
+	github.com/google/go-containerregistry v0.20.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
 	github.com/moby/buildkit v0.14.1
@@ -50,12 +50,12 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/sylabs/json-resp v0.9.3
-	github.com/sylabs/oci-tools v0.10.0
+	github.com/sylabs/oci-tools v0.11.0
 	github.com/sylabs/scs-build-client v0.9.6
 	github.com/sylabs/scs-key-client v0.7.6
 	github.com/sylabs/scs-library-client v1.4.9
 	github.com/sylabs/sif/v2 v2.17.1
-	github.com/sylabs/squashfs v0.6.1
+	github.com/sylabs/squashfs v1.0.0
 	github.com/vbauerster/mpb/v8 v8.7.3
 	go.etcd.io/bbolt v1.3.10
 	golang.org/x/crypto v0.25.0
@@ -157,7 +157,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/package-url/packageurl-go v0.1.1-0.20220428063043-89078438f170 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pierrec/lz4/v4 v4.1.15 // indirect
+	github.com/pierrec/lz4/v4 v4.1.19 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
