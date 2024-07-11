@@ -54,7 +54,7 @@ require (
 	github.com/sylabs/scs-build-client v0.9.6
 	github.com/sylabs/scs-key-client v0.7.6
 	github.com/sylabs/scs-library-client v1.4.9
-	github.com/sylabs/sif/v2 v2.17.1
+	github.com/sylabs/sif/v2 v2.18.0
 	github.com/sylabs/squashfs v1.0.0
 	github.com/vbauerster/mpb/v8 v8.7.3
 	go.etcd.io/bbolt v1.3.10
@@ -68,8 +68,8 @@ require (
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.5.1
 	mvdan.cc/sh/v3 v3.7.1-0.20231014181306-8b673862efc6
-	tags.cncf.io/container-device-interface v0.7.2
-	tags.cncf.io/container-device-interface/specs-go v0.7.0
+	tags.cncf.io/container-device-interface v0.8.0
+	tags.cncf.io/container-device-interface/specs-go v0.8.0
 )
 
 require (
