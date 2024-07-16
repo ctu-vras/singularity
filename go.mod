@@ -41,7 +41,7 @@ require (
 	github.com/opencontainers/umoci v0.4.7
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pkg/errors v0.9.1
-	github.com/samber/lo v1.44.0
+	github.com/samber/lo v1.45.0
 	github.com/sebdah/goldie/v2 v2.5.3
 	github.com/seccomp/libseccomp-golang v0.10.0
 	github.com/shopspring/decimal v1.4.0
@@ -50,7 +50,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/sylabs/json-resp v0.9.3
-	github.com/sylabs/oci-tools v0.11.0
+	github.com/sylabs/oci-tools v0.11.1
 	github.com/sylabs/scs-build-client v0.9.6
 	github.com/sylabs/scs-key-client v0.7.6
 	github.com/sylabs/scs-library-client v1.4.9
