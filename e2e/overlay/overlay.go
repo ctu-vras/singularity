@@ -294,6 +294,14 @@ func (c ctx) testOverlayOCI(t *testing.T) {
 			args:    []string{ocisif, "ls", "/in-overlay"},
 			exit:    0,
 		},
+		// Synchronize the overlay digest.
+		{
+			name:    "sync",
+			profile: e2e.UserProfile,
+			command: "overlay",
+			args:    []string{"sync", ocisif},
+			exit:    0,
+		},
 		// Remove file without `--writable` - should be an ephemeral change, file still in overlay.
 		{
 			name:    "tmpfs rm",
@@ -338,6 +346,14 @@ func (c ctx) testOverlayOCI(t *testing.T) {
 			command: "exec",
 			args:    []string{ocisif, "ls", "/in-overlay"},
 			exit:    1,
+		},
+		// Seal the overlay
+		{
+			name:    "seal",
+			profile: e2e.OCIUserProfile,
+			command: "overlay",
+			args:    []string{"seal", ocisif},
+			exit:    0,
 		},
 	}
 

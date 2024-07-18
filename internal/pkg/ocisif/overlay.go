@@ -6,20 +6,44 @@
 package ocisif
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/types"
+	ocitmutate "github.com/sylabs/oci-tools/pkg/mutate"
 	ocitsif "github.com/sylabs/oci-tools/pkg/sif"
 	"github.com/sylabs/sif/v2/pkg/sif"
+	"github.com/sylabs/singularity/v4/internal/pkg/util/fs/fuse"
+	"github.com/sylabs/singularity/v4/internal/pkg/util/fs/squashfs"
 	"github.com/sylabs/singularity/v4/pkg/image"
+	"github.com/sylabs/singularity/v4/pkg/sylog"
 )
 
 var Ext3LayerMediaType types.MediaType = "application/vnd.sylabs.image.layer.v1.ext3"
+
+func getSingleImage(fi *sif.FileImage) (v1.Image, error) {
+	ii, err := ocitsif.ImageIndexFromFileImage(fi)
+	if err != nil {
+		return nil, fmt.Errorf("while obtaining image index: %w", err)
+	}
+	ix, err := ii.IndexManifest()
+	if err != nil {
+		return nil, fmt.Errorf("while obtaining index manifest: %w", err)
+	}
+
+	// One image only.
+	if len(ix.Manifests) != 1 {
+		return nil, fmt.Errorf("only single image data containers are supported, found %d images", len(ix.Manifests))
+	}
+	imageDigest := ix.Manifests[0].Digest
+	return ii.Image(imageDigest)
+}
 
 // HasOverlay returns whether the OCI-SIF at imgPath has an ext3 writable final
 // layer - an 'overlay'. If present, the offset of the overlay data in the
@@ -33,25 +57,10 @@ func HasOverlay(imagePath string) (bool, int64, error) {
 	}
 	defer fi.UnloadContainer()
 
-	ii, err := ocitsif.ImageIndexFromFileImage(fi)
+	img, err := getSingleImage(fi)
 	if err != nil {
-		return false, 0, fmt.Errorf("while obtaining image index: %w", err)
+		return false, 0, fmt.Errorf("while getting image: %w", err)
 	}
-	ix, err := ii.IndexManifest()
-	if err != nil {
-		return false, 0, fmt.Errorf("while obtaining index manifest: %w", err)
-	}
-
-	// One image only.
-	if len(ix.Manifests) != 1 {
-		return false, 0, fmt.Errorf("only single image data containers are supported, found %d images", len(ix.Manifests))
-	}
-	imageDigest := ix.Manifests[0].Digest
-	img, err := ii.Image(imageDigest)
-	if err != nil {
-		return false, 0, fmt.Errorf("while initializing image: %w", err)
-	}
-
 	layers, err := img.Layers()
 	if err != nil {
 		return false, 0, fmt.Errorf("while getting image layers: %w", err)
@@ -89,24 +98,12 @@ func AddOverlay(imagePath string, overlayPath string) error {
 	}
 	defer fi.UnloadContainer()
 
-	ii, err := ocitsif.ImageIndexFromFileImage(fi)
+	img, err := getSingleImage(fi)
 	if err != nil {
-		return fmt.Errorf("while obtaining image index: %w", err)
-	}
-	ix, err := ii.IndexManifest()
-	if err != nil {
-		return fmt.Errorf("while obtaining index manifest: %w", err)
-	}
-	if len(ix.Manifests) != 1 {
-		return fmt.Errorf("only single image OCI-SIF files are supported - found %d images", len(ix.Manifests))
-	}
-	imageDigest := ix.Manifests[0].Digest
-	img, err := ii.Image(imageDigest)
-	if err != nil {
-		return fmt.Errorf("while initializing image: %w", err)
+		return fmt.Errorf("while getting image: %w", err)
 	}
 
-	ol, err := ext3LayerFromFile(overlayPath)
+	ol, err := imageLayerFromFile(overlayPath, image.EXT3)
 	if err != nil {
 		return err
 	}
@@ -116,102 +113,284 @@ func AddOverlay(imagePath string, overlayPath string) error {
 		return err
 	}
 
-	ii = mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
+	ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
 
 	return ocitsif.Update(fi, ii)
 }
 
-// ext3ImageOpener opens a source ext3 overlay image file to be added as a layer.
-type ext3ImageOpener func() (io.ReadSeekCloser, error)
+// SyncOverlay synchronizes the digests of the overlay, stored in the OCI
+// structures, with its true content.
+func SyncOverlay(imagePath string) error {
+	fi, err := sif.LoadContainerFromPath(imagePath)
+	if err != nil {
+		return err
+	}
+	defer fi.UnloadContainer()
 
-type ext3ImageLayer struct {
-	opener ext3ImageOpener
-	digest v1.Hash
-	diffID v1.Hash
-	size   int64
+	img, err := getSingleImage(fi)
+	if err != nil {
+		return fmt.Errorf("while getting image: %w", err)
+	}
+	layers, err := img.Layers()
+	if err != nil {
+		return fmt.Errorf("while getting image layers: %w", err)
+	}
+	if len(layers) < 1 {
+		return fmt.Errorf("image has no layers")
+	}
+	oldLayer := layers[len(layers)-1]
+	mt, err := oldLayer.MediaType()
+	if err != nil {
+		return fmt.Errorf("while getting layer mediatype: %w", err)
+	}
+	if mt != Ext3LayerMediaType {
+		return fmt.Errorf("image does not contain a writable overlay")
+	}
+
+	// Existing descriptor and digest
+	oldDigest, err := oldLayer.Digest()
+	if err != nil {
+		return err
+	}
+	desc, err := fi.GetDescriptor(sif.WithOCIBlobDigest(oldDigest))
+	if err != nil {
+		return err
+	}
+	// Updated layer and digest
+	o := func() (io.ReadCloser, error) {
+		return io.NopCloser(desc.GetReader()), nil
+	}
+	newLayer, err := imageLayerFromOpener(o, image.EXT3)
+	if err != nil {
+		return err
+	}
+	newDigest, err := newLayer.Digest()
+	if err != nil {
+		return err
+	}
+
+	if newDigest == oldDigest {
+		sylog.Infof("OCI digest matches overlay, no update required.")
+		return nil
+	}
+
+	// Update overlay OCI.Blob digest in SIF. This must be done before the
+	// oci-tools Update is called, so that it re-uses the existing overlay
+	// descriptor, with the updated digest.
+	if err := fi.SetOCIBlobDigest(desc.ID(), newDigest); err != nil {
+		return fmt.Errorf("while updating descriptor digest: %v", err)
+	}
+
+	img, err = ocitmutate.Apply(img, ocitmutate.SetLayer(len(layers)-1, newLayer))
+	if err != nil {
+		return err
+	}
+	ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
+	return ocitsif.Update(fi, ii)
 }
 
-var _ v1.Layer = (*ext3ImageLayer)(nil)
+// SealOverlay converts an ext3 overlay into a r/o squashfs layer. If `tmpDir`
+// is specified, then the temporary squashfs image will be created inside it. If
+// tmpDir is the empty string, then temporary files will be created at the
+// location returned by os.TempDir.
+func SealOverlay(imagePath, tmpDir string) error {
+	fi, err := sif.LoadContainerFromPath(imagePath)
+	if err != nil {
+		return err
+	}
+	defer fi.UnloadContainer()
+
+	img, err := getSingleImage(fi)
+	if err != nil {
+		return fmt.Errorf("while getting image: %w", err)
+	}
+	layers, err := img.Layers()
+	if err != nil {
+		return fmt.Errorf("while getting image layers: %w", err)
+	}
+	if len(layers) < 1 {
+		return fmt.Errorf("image has no layers")
+	}
+	l := layers[len(layers)-1]
+	mt, err := l.MediaType()
+	if err != nil {
+		return fmt.Errorf("while getting layer mediatype: %w", err)
+	}
+	if mt != Ext3LayerMediaType {
+		return fmt.Errorf("image does not contain a writable overlay")
+	}
+
+	d, err := l.Digest()
+	if err != nil {
+		return err
+	}
+	desc, err := fi.GetDescriptor(sif.WithOCIBlobDigest(d))
+	if err != nil {
+		return err
+	}
+
+	// Mount extfs inside tmpDir. We use a subdirectory so that the permissions
+	// applied from the root of image cannot open tmpDir to other users.
+	tmpDir, err = os.MkdirTemp(tmpDir, "overlay-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+	mntDir := filepath.Join(tmpDir, "overlay")
+	if err := os.Mkdir(mntDir, 0o755); err != nil {
+		return err
+	}
+	im := fuse.ImageMount{
+		Type:       image.EXT3,
+		Readonly:   true,
+		SourcePath: imagePath,
+		ExtraOpts:  []string{fmt.Sprintf("offset=%d", desc.Offset())},
+	}
+	im.SetMountPoint(mntDir)
+	if err := im.Mount(context.TODO()); err != nil {
+		return err
+	}
+	// Create squashfs from mounted extfs dir.
+	sqfs := filepath.Join(tmpDir, "overlay.sqfs")
+	if err := squashfs.Mksquashfs([]string{mntDir}, sqfs); err != nil {
+		return err
+	}
+	// Unmount the extfs.
+	if err := im.Unmount(context.TODO()); err != nil {
+		return err
+	}
+	// Replace extfs overlay layer with the squashfs.
+	newLayer, err := imageLayerFromFile(sqfs, image.SQUASHFS)
+	if err != nil {
+		return err
+	}
+	img, err = ocitmutate.Apply(img, ocitmutate.SetLayer(len(layers)-1, newLayer))
+	if err != nil {
+		return err
+	}
+	ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
+	return ocitsif.Update(fi, ii)
+}
+
+// imageOpener opens an ext3 or squashfs filesystem image file to be added as a
+// layer.
+type imageOpener func() (io.ReadCloser, error)
+
+type imageLayer struct {
+	imageType int // image.EXT3 and image.SQUASHFS are currently implemented
+	opener    imageOpener
+	digest    v1.Hash
+	diffID    v1.Hash
+	size      int64
+}
+
+var _ v1.Layer = (*imageLayer)(nil)
 
 // Descriptor returns the original descriptor from an image manifest. See partial.Descriptor.
-func (l *ext3ImageLayer) Descriptor() (*v1.Descriptor, error) {
+func (l *imageLayer) Descriptor() (*v1.Descriptor, error) {
+	mt, err := l.MediaType()
+	if err != nil {
+		return nil, err
+	}
 	return &v1.Descriptor{
 		Size:      l.size,
 		Digest:    l.digest,
-		MediaType: Ext3LayerMediaType,
+		MediaType: mt,
 	}, nil
 }
 
 // Digest implements v1.Layer
-func (l *ext3ImageLayer) Digest() (v1.Hash, error) {
+func (l *imageLayer) Digest() (v1.Hash, error) {
 	return l.digest, nil
 }
 
 // DiffID returns the Hash of the uncompressed layer.
-func (l *ext3ImageLayer) DiffID() (v1.Hash, error) {
+func (l *imageLayer) DiffID() (v1.Hash, error) {
 	return l.diffID, nil
 }
 
 // Compressed returns an io.ReadCloser for the compressed layer contents.
-func (l *ext3ImageLayer) Compressed() (io.ReadCloser, error) {
+func (l *imageLayer) Compressed() (io.ReadCloser, error) {
 	return l.opener()
 }
 
 // Uncompressed returns an io.ReadCloser for the uncompressed layer contents.
-func (l *ext3ImageLayer) Uncompressed() (io.ReadCloser, error) {
+func (l *imageLayer) Uncompressed() (io.ReadCloser, error) {
 	return l.opener()
 }
 
 // Size returns the compressed size of the Layer.
-func (l *ext3ImageLayer) Size() (int64, error) {
+func (l *imageLayer) Size() (int64, error) {
 	return l.size, nil
 }
 
 // MediaType returns the media type of the Layer.
-func (l *ext3ImageLayer) MediaType() (types.MediaType, error) {
-	return Ext3LayerMediaType, nil
+func (l *imageLayer) MediaType() (types.MediaType, error) {
+	switch l.imageType {
+	case image.EXT3:
+		return Ext3LayerMediaType, nil
+	case image.SQUASHFS:
+		return SquashfsLayerMediaType, nil
+	default:
+		return "", errUnsupportedType
+	}
 }
 
-func ext3LayerFromFile(path string) (v1.Layer, error) {
-	opener := func() (io.ReadSeekCloser, error) {
+func imageLayerFromFile(path string, imageType int) (v1.Layer, error) {
+	opener := func() (io.ReadCloser, error) {
 		return os.Open(path)
 	}
-	return ext3LayerFromOpener(opener)
+	return imageLayerFromOpener(opener, imageType)
 }
 
 const hdrBuffSize = 2048
 
-func ext3LayerFromOpener(opener ext3ImageOpener) (v1.Layer, error) {
+func imageLayerFromOpener(opener imageOpener, imageType int) (v1.Layer, error) {
 	rc, err := opener()
 	if err != nil {
 		return nil, err
 	}
 	defer rc.Close()
 
-	// Ensure our source is really an ext3 image
+	// Ensure our source is really the specified image type
 	b := make([]byte, hdrBuffSize)
 	if n, err := rc.Read(b); err != nil || n != hdrBuffSize {
 		return nil, fmt.Errorf("while reading overlay file header: %w", err)
 	}
-	_, err = image.CheckExt3Header(b)
+	switch imageType {
+	case image.EXT3:
+		_, err = image.CheckExt3Header(b)
+	case image.SQUASHFS:
+		_, err = image.CheckSquashfsHeader(b)
+	default:
+		return nil, errUnsupportedType
+	}
 	if err != nil {
-		return nil, fmt.Errorf("while checking overlay file header: %w", err)
+		return nil, fmt.Errorf("while checking image file header: %w", err)
 	}
 
-	_, err = rc.Seek(0, io.SeekStart)
+	// Re-open rather than seek, so we can use the SIF GetReader API which
+	// returns an io.Reader only.
+	if err := rc.Close(); err != nil {
+		return nil, err
+	}
+	rc, err = opener()
 	if err != nil {
 		return nil, err
 	}
+	defer rc.Close()
+
 	digest, size, err := v1.SHA256(rc)
 	if err != nil {
 		return nil, err
 	}
 
-	l := &ext3ImageLayer{
-		opener: opener,
-		digest: digest,
-		diffID: digest, // no compression - diffID = digest
-		size:   size,
+	l := &imageLayer{
+		imageType: imageType,
+		opener:    opener,
+		digest:    digest,
+		diffID:    digest, // no compression - diffID = digest
+		size:      size,
 	}
 	return l, nil
 }

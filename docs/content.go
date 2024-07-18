@@ -537,11 +537,44 @@ Enterprise Performance Computing (EPC)`
   existing container image that will begin running in the background. If a
   startscript is defined in the container metadata the commands in that script
   will be executed with the instance start command as well. You can optionally
-  pass arguments to startscript
+  pass arguments to startscript.
 
   singularity instance start accepts the following container formats` + formats
 	InstanceStartExample string = `
   $ singularity instance start /tmp/my-sql.sif mysql
+
+  $ singularity shell instance://mysql
+  Singularity my-sql.sif> pwd
+  /home/mibauer/mysql
+  Singularity my-sql.sif> ps
+  PID TTY          TIME CMD
+    1 pts/0    00:00:00 sinit
+    2 pts/0    00:00:00 bash
+    3 pts/0    00:00:00 ps
+  Singularity my-sql.sif>
+
+  $ singularity instance stop /tmp/my-sql.sif mysql
+  Stopping /tmp/my-sql.sif mysql`
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// instance run
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	InstanceRunUse   string = `run [start options...] <container path> <instance name> [runscript args...]`
+	InstanceRunShort string = `Run a named instance of the given container image`
+	InstanceRunLong  string = `
+  The instance run command allows you to create a new named instance from an
+  existing container image that will begin running in the background. If a
+  runscript is defined in the container metadata the commands in that script
+  will be executed with the instance run command as well. You can optionally
+  pass arguments to runscript.
+
+  NOTE: This command was added to Singularity significantly later than the other 
+  action commands and will not work with older containers. In that case, you may
+  need to rebuild the container. 
+
+  singularity instance run accepts the following container formats` + formats
+	InstanceRunExample string = `
+  $ singularity instance run /tmp/my-sql.sif mysql
 
   $ singularity shell instance://mysql
   Singularity my-sql.sif> pwd
@@ -1109,6 +1142,25 @@ Enterprise Performance Computing (EPC)`
 
   To create a sparse overlay when creating a new ext3 file system image:
   $ singularity overlay create --size 1024 --sparse /tmp/ext3_overlay.img`
+
+	OverlaySyncUse   string = `sync oci-sif`
+	OverlaySyncShort string = `Sync OCI-SIF manifest & config with overlay content`
+	OverlaySyncLong  string = `
+  The overlay sync command updates the OCI manifest and config in an OCI-SIF image
+  to reflect any changes that have been made to the content of a writable overlay.`
+	OverlaySyncExample string = `
+  To synchronize an OCI-SIF image containing an overlay:
+  $ singularity overlay sync /tmp/overlay.oci.sif`
+
+	OverlaySealUse   string = `seal oci-sif`
+	OverlaySealShort string = `Seal a writable overlay, into a read-only layer.`
+	OverlaySealLong  string = `
+  The overlay seal command converts a writable overlay in an OCI-SIF image into
+  a read-only image layer. This makes changes in the overlay permanent, and allows
+  the image to be pushed with '--layer-format tar'.`
+	OverlaySealExample string = `
+  To seal an OCI-SIF image containing an overlay:
+  $ singularity overlay seal /tmp/overlay.oci.sif`
 
 	DataUse   string = `data`
 	DataShort string = `Manage an OCI-SIF data container`

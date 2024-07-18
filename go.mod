@@ -27,11 +27,11 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/go-log/log v0.2.0
 	github.com/gofrs/flock v0.12.0
-	github.com/google/go-containerregistry v0.20.0
+	github.com/google/go-containerregistry v0.20.1
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
 	github.com/moby/buildkit v0.15.0
-	github.com/moby/sys/sequential v0.5.0
+	github.com/moby/sys/sequential v0.6.0
 	github.com/moby/term v0.5.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/opencontainers/runc v1.1.13
