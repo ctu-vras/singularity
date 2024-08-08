@@ -27,7 +27,7 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/go-log/log v0.2.0
 	github.com/gofrs/flock v0.12.1
-	github.com/google/go-containerregistry v0.20.1
+	github.com/google/go-containerregistry v0.20.2
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
 	github.com/moby/buildkit v0.15.1
@@ -58,11 +58,11 @@ require (
 	github.com/sylabs/squashfs v1.0.0
 	github.com/vbauerster/mpb/v8 v8.7.5
 	go.etcd.io/bbolt v1.3.10
-	golang.org/x/crypto v0.25.0
+	golang.org/x/crypto v0.26.0
 	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.23.0
-	golang.org/x/term v0.22.0
-	golang.org/x/text v0.16.0
+	golang.org/x/term v0.23.0
+	golang.org/x/text v0.17.0
 	google.golang.org/grpc v1.65.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
