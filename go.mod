@@ -20,7 +20,7 @@ require (
 	github.com/containers/image/v5 v5.32.1
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.1
-	github.com/docker/cli v27.1.1+incompatible
+	github.com/docker/cli v27.1.2+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/docker/go-units v0.5.0
@@ -41,7 +41,7 @@ require (
 	github.com/opencontainers/umoci v0.4.7
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pkg/errors v0.9.1
-	github.com/samber/lo v1.46.0
+	github.com/samber/lo v1.47.0
 	github.com/sebdah/goldie/v2 v2.5.5
 	github.com/seccomp/libseccomp-golang v0.10.0
 	github.com/shopspring/decimal v1.4.0
