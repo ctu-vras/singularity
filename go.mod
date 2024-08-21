@@ -1,6 +1,6 @@
 module github.com/sylabs/singularity/v4
 
-go 1.21.5
+go 1.22
 
 require (
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
@@ -22,7 +22,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.3.1
 	github.com/docker/cli v27.1.2+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v27.1.1+incompatible
+	github.com/docker/docker v27.1.2+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.17.0
 	github.com/go-log/log v0.2.0
@@ -30,7 +30,7 @@ require (
 	github.com/google/go-containerregistry v0.20.2
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
-	github.com/moby/buildkit v0.15.1
+	github.com/moby/buildkit v0.15.2
 	github.com/moby/sys/sequential v0.6.0
 	github.com/moby/term v0.5.0
 	github.com/opencontainers/image-spec v1.1.0
@@ -56,7 +56,7 @@ require (
 	github.com/sylabs/scs-library-client v1.4.9
 	github.com/sylabs/sif/v2 v2.18.0
 	github.com/sylabs/squashfs v1.0.0
-	github.com/vbauerster/mpb/v8 v8.7.5
+	github.com/vbauerster/mpb/v8 v8.8.2
 	go.etcd.io/bbolt v1.3.10
 	golang.org/x/crypto v0.26.0
 	golang.org/x/sync v0.8.0
@@ -67,7 +67,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.5.1
-	mvdan.cc/sh/v3 v3.7.1-0.20231014181306-8b673862efc6
+	mvdan.cc/sh/v3 v3.9.0
 	tags.cncf.io/container-device-interface v0.8.0
 	tags.cncf.io/container-device-interface/specs-go v0.8.0
 )
@@ -103,7 +103,7 @@ require (
 	github.com/containers/storage v1.55.0 // indirect
 	github.com/coreos/go-iptables v0.7.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
-	github.com/creack/pty v1.1.18 // indirect
+	github.com/creack/pty v1.1.21 // indirect
 	github.com/d2g/dhcp4 v0.0.0-20170904100407-a1d1b6c41b1c // indirect
 	github.com/d2g/dhcp4client v1.0.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
@@ -152,7 +152,9 @@ require (
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/signal v0.7.0 // indirect
 	github.com/moby/sys/user v0.2.0 // indirect
+	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/networkplumbing/go-nft v0.4.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/package-url/packageurl-go v0.1.1-0.20220428063043-89078438f170 // indirect
@@ -164,7 +166,6 @@ require (
 	github.com/prometheus/common v0.51.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/rootless-containers/proto v0.1.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/safchain/ethtool v0.4.0 // indirect
