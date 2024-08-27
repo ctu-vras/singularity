@@ -39,7 +39,7 @@ require (
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230914150019-408c51e934dc
 	github.com/opencontainers/selinux v1.11.0
 	github.com/opencontainers/umoci v0.4.7
-	github.com/pelletier/go-toml/v2 v2.2.2
+	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.47.0
 	github.com/sebdah/goldie/v2 v2.5.5
@@ -50,11 +50,11 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/sylabs/json-resp v0.9.3
-	github.com/sylabs/oci-tools v0.12.0
-	github.com/sylabs/scs-build-client v0.9.6
+	github.com/sylabs/oci-tools v0.13.0
+	github.com/sylabs/scs-build-client v0.9.12
 	github.com/sylabs/scs-key-client v0.7.6
-	github.com/sylabs/scs-library-client v1.4.9
-	github.com/sylabs/sif/v2 v2.19.0
+	github.com/sylabs/scs-library-client v1.4.10
+	github.com/sylabs/sif/v2 v2.19.1
 	github.com/sylabs/squashfs v1.0.0
 	github.com/vbauerster/mpb/v8 v8.8.2
 	go.etcd.io/bbolt v1.3.11
