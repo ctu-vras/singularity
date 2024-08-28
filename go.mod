@@ -11,7 +11,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/buger/goterm v1.0.4
 	github.com/buger/jsonparser v1.1.1
-	github.com/containerd/containerd v1.7.20
+	github.com/containerd/containerd v1.7.21
 	github.com/containerd/continuity v0.4.3
 	github.com/containerd/go-runc v1.1.0
 	github.com/containerd/platforms v0.2.1
@@ -32,6 +32,7 @@ require (
 	github.com/gosimple/slug v1.14.0
 	github.com/moby/buildkit v0.15.2
 	github.com/moby/sys/sequential v0.6.0
+	github.com/moby/sys/userns v0.1.0
 	github.com/moby/term v0.5.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/opencontainers/runc v1.1.13
@@ -49,14 +50,14 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/sylabs/json-resp v0.9.3
+	github.com/sylabs/json-resp v0.9.4
 	github.com/sylabs/oci-tools v0.13.0
-	github.com/sylabs/scs-build-client v0.9.12
-	github.com/sylabs/scs-key-client v0.7.6
+	github.com/sylabs/scs-build-client v0.9.13
+	github.com/sylabs/scs-key-client v0.7.7
 	github.com/sylabs/scs-library-client v1.4.10
 	github.com/sylabs/sif/v2 v2.19.1
 	github.com/sylabs/squashfs v1.0.0
-	github.com/vbauerster/mpb/v8 v8.8.2
+	github.com/vbauerster/mpb/v8 v8.8.3
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/crypto v0.26.0
 	golang.org/x/sync v0.8.0
@@ -151,8 +152,7 @@ require (
 	github.com/moby/sys/mount v0.3.3 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/signal v0.7.0 // indirect
-	github.com/moby/sys/user v0.2.0 // indirect
-	github.com/moby/sys/userns v0.1.0 // indirect
+	github.com/moby/sys/user v0.3.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/networkplumbing/go-nft v0.4.0 // indirect
