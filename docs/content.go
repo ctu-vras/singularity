@@ -792,13 +792,20 @@ Enterprise Performance Computing (EPC)`
   the file.
 
   Key material can be provided via PEM-encoded file, or an entity in the PGP
-  keyring. To manage the PGP keyring, see 'singularity help key'.`
+  keyring. To manage the PGP keyring, see 'singularity help key'.
+  
+  --cosign mode supports signing an OCI image within an OCI-SIF file with a
+  cosign-compatible signature. A private key must be provided with the --key
+  flag.`
 	SignExample string = `
   Sign with a private key:
   $ singularity sign --key private.pem container.sif
 
   Sign with PGP:
-  $ singularity sign container.sif`
+  $ singularity sign container.sif
+  
+  Sign an image within an OCI-SIF with a cosign compatible signature:
+  $ singularity sign --cosign --key cosign.key container.oci.sif`
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// verify
@@ -810,13 +817,21 @@ Enterprise Performance Computing (EPC)`
   within a SIF image.
 
   Key material can be provided via PEM-encoded file, or via the PGP keyring. To
-  manage the PGP keyring, see 'singularity help key'.`
+  manage the PGP keyring, see 'singularity help key'.
+  
+  
+  --cosign mode supports verifying an OCI image within an OCI-SIF file that has
+  a cosign-compatible signature. A public key must be provided with the --key
+  flag.`
 	VerifyExample string = `
   Verify with a public key:
   $ singularity verify --key public.pem container.sif
 
   Verify with PGP:
-  $ singularity verify container.sif`
+  $ singularity verify container.sif
+  
+  Verify an image within an OCI-SIF with a cosign compatible signature:
+  $ singularity verify --cosign --key cosign.pub container.oci.sif`
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Run-help

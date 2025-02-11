@@ -6,6 +6,9 @@
 
 - Use correct username (not user's name) when computing `singularity oci` conmon
   / singularity state dir.
+- Write StdErr messages from starter to terminal StdErr when an instance fails
+  to start. Previously incorrectly written to terminal StdOut.
+- Fix incorrect debug message in Cgroups checks.
 
 ### New Features & Functionality
 
@@ -15,6 +18,14 @@
   from `/etc/subid` and `/etc/subgid` regardless of system configuration. Note
   that `singularity config fakeroot` always modifies `/etc/subid` and
   `/etc/subgid`files.
+- `singularity sign` now supports signing an image in an OCI-SIF with a
+  cosign-compatible sigstore signature. Use the `--cosign` flag, and provide
+  a private key with the `--key` flag.
+- `singularity verify` now supports verifying an image in an OCI-SIF with a
+  cosign-compatible sigstore signature. Use the `--cosign` flag, and provide a
+  public key with the `--key` flag. Verification passes if at least one
+  signature that can be validated with the provided key is present. The JSON
+  payloads of all valid signatures are displayed.
 
 ## Requirements / Packaging
 
