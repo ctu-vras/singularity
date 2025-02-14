@@ -1,5 +1,5 @@
 // Copyright (c) 2020, Control Command Inc. All rights reserved.
-// Copyright (c) 2018-2023, Sylabs Inc. All rights reserved.
+// Copyright (c) 2018-2025, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -30,6 +30,7 @@ type PullOptions struct {
 	NoCleanUp   bool
 	OciSif      bool
 	KeepLayers  bool
+	WithCosign  bool
 	Platform    gccrv1.Platform
 	ReqAuthFile string
 }
@@ -56,7 +57,7 @@ func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom string, opts Pul
 			return "", fmt.Errorf("unable to create tmp file: %v", err)
 		}
 		directTo = file.Name()
-		sylog.Infof("Downloading library image to tmp cache: %s", directTo)
+		sylog.Infof("Downloading image to tmp cache: %s", directTo)
 	}
 	if opts.OciSif {
 		ocisifOpts := ocisif.PullOptions{
@@ -68,6 +69,7 @@ func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom string, opts Pul
 			Platform:    opts.Platform,
 			ReqAuthFile: opts.ReqAuthFile,
 			KeepLayers:  opts.KeepLayers,
+			WithCosign:  opts.WithCosign,
 		}
 		return ocisif.PullOCISIF(ctx, imgCache, directTo, pullFrom, ocisifOpts)
 	}
@@ -82,6 +84,10 @@ func PullToFile(ctx context.Context, imgCache *cache.Handle, pullTo, pullFrom st
 		directTo = pullTo
 		sylog.Debugf("Cache disabled, pulling directly to: %s", directTo)
 	}
+	if opts.WithCosign {
+		directTo = pullTo
+		sylog.Infof("cosign signature functionality does not support SIF caching, pulling directly to: %s", directTo)
+	}
 	src := ""
 	if opts.OciSif {
 		ocisifOpts := ocisif.PullOptions{
@@ -93,6 +99,7 @@ func PullToFile(ctx context.Context, imgCache *cache.Handle, pullTo, pullFrom st
 			Platform:    opts.Platform,
 			ReqAuthFile: opts.ReqAuthFile,
 			KeepLayers:  opts.KeepLayers,
+			WithCosign:  opts.WithCosign,
 		}
 		src, err = ocisif.PullOCISIF(ctx, imgCache, directTo, pullFrom, ocisifOpts)
 	} else {

@@ -2,6 +2,11 @@
 
 ## Changes Since Last Release
 
+### Behaviour Changes
+
+- Skip attempting to bind inaccessible mount points when handling the
+  `mount hostfs = yes` configuration option.
+
 ### Bug Fixes
 
 - Use correct username (not user's name) when computing `singularity oci` conmon
@@ -9,6 +14,8 @@
 - Write StdErr messages from starter to terminal StdErr when an instance fails
   to start. Previously incorrectly written to terminal StdOut.
 - Fix incorrect debug message in Cgroups checks.
+- Skip invalid environment variables when pulling pulling OCI images to
+  native SIF, so environment sourcing does not fail.
 
 ### New Features & Functionality
 
@@ -28,6 +35,15 @@
   payloads of all valid signatures are displayed.
 - `singularity push` now supports pushing cosign signatures in an OCI-SIF to
   an OCI registry, via the `--with-cosign` flag.
+- `singularity pull` now supports pulling cosign signatures from a registry
+  to an OCI-SIF, via the `--with-cosign` flag when `--oci` is also specified.
+  Signatures can only be pulled when the image in the registry is in SquashFS
+  format. Converting layer formats, or squashing to a single layer, modifies
+  the image manifest, and would invalidate any signatures.
+- The new `singularity key generate-cosign-key-pair` subcommand can be used
+  to generate a password-protected key-pair for signing OCI-SIF images with
+  cosign-compatible signatures.
+- Added `dnf` definition file bootstrap as an alias for `yum`.
 
 ## Requirements / Packaging
 
@@ -37,6 +53,8 @@
 - Ubuntu deb packages are built without libsubid support.
 - The RPM spec file no longer includes rules for SLES / openSUSE package builds,
   which have been untested / unsupported for some time.
+- Make binary builds more reproducible by deriving the GNU build ID
+  from the Go build ID instead of using a randomly generated one.
 
 ### Removed Features
 
