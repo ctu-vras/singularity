@@ -24,7 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     container: golang:latest
     steps:
-    - uses: actions/checkout@master
+    - name: Checkout
+      uses: actions/checkout@master
+      with:
+        # Fine-grained PAT with contents:write and workflows:write scopes
+        token: ${{ secrets.WORKFLOW_TOKEN }}
     - name: update
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
