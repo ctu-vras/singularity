@@ -31,7 +31,7 @@ jobs:
         token: ${{ secrets.WORKFLOW_TOKEN }}
     - name: update
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
         UPSTREAM: https://github.com/sylabs/singularity
       run: |
         USER_INPUT=${{ inputs.force_release }}
@@ -40,7 +40,7 @@ jobs:
         apt-get -qq -y update
         apt-get -qq -y install bash git python3 devscripts git-buildpackage
         rm -rf singularity
-        git clone https://x-access-token:${GITHUB_TOKEN}@github.com/ctu-vras/singularity.git
+        git clone https://x-access-token:${{ secrets.WORKFLOW_TOKEN }}@github.com/ctu-vras/singularity.git
         cd singularity
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@users.noreply.github.com"
