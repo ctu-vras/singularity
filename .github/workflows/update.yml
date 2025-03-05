@@ -14,12 +14,15 @@ on:
     branches:
       - cras
 
+permissions:
+  contents: write
+  actions: write
+  pull-requests: write
+
 jobs:
   update-upstream:
     runs-on: ubuntu-latest
     container: golang:latest
-    permissions:
-      actions: write
     steps:
     - uses: actions/checkout@master
     - name: update
