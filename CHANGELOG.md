@@ -1,6 +1,6 @@
 # SingularityCE Changelog
 
-## Changes Since Last Release
+## 4.3.0-rc.1 Release Candidate \[2025-03-04\]
 
 ### Behaviour Changes
 
@@ -66,6 +66,12 @@
   which have been untested / unsupported for some time.
 - Make binary builds more reproducible by deriving the GNU build ID
   from the Go build ID instead of using a randomly generated one.
+- Conmon sources are no longer bundled and built with SingularityCE. Install the
+  `conmon` package from your distribution, or [upstream
+  binary](https://github.com/containers/conmon/releases), if you need to use the
+  `singularity oci` commands. Note that `conmon` is not required for `--oci`
+  mode.
+- Now compiles successfully with `-std=c23`.
 
 ### Removed Features
 

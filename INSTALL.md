@@ -24,7 +24,6 @@ sudo apt-get install -y \
     git \
     fuse \
     libfuse-dev \
-    libglib2.0-dev \
     libseccomp-dev \
     libtool \
     pkg-config \
@@ -67,7 +66,6 @@ sudo dnf --enablerepo=devel install -y \
     fuse3 \
     fuse3-devel \
     git \
-    glib2-devel \
     libseccomp-devel \
     libtool \
     shadow-utils-subid-devel \
@@ -76,7 +74,7 @@ sudo dnf --enablerepo=devel install -y \
     zlib-devel
 ```
 
-## Install sqfstar / tar2sqfs for OCI-mode
+## Recommended: Install sqfstar / tar2sqfs for OCI-mode
 
 If you intend to use the `--oci` execution mode of SingularityCE, your system
 must provide either:
@@ -115,6 +113,40 @@ for you distribution to enable the EPEL repository. Install `squashfs-tools-ng` 
 
 ```sh
 sudo dnf install squashfs-tools-ng
+```
+
+## Optional: Install conmon for `singularity oci` commands
+
+If you intend to use the `singularity oci` commands, to run Singularity
+containers in an OCI lifecycle then `conmon` is required.
+
+* `squashfs-tools / squashfs` >= 4.5, which provides the `sqfstar` utility.
+  Older versions packaged by many distributions do not include `sqfstar`.
+* `squashfs-tools-ng`, which provides the `tar2sqfs` utility. This is not
+  packaged by all distributions.
+
+### Debian / Ubuntu
+
+`conmon` is available as a package for Ubuntu 24.10+ and Debian 12+
+
+```sh
+sudo apt get install conmon
+```
+
+On older versions, use the latest binary from the [conmon GitHub
+releases](https://github.com/containers/conmon/releases) page. E.g.
+
+```sh
+sudo curl -L -o /usr/local/bin/conmon https://github.com/containers/conmon/releases/download/v2.1.13/conmon.amd64
+sudo chmod +x /usr/local/bin/conmon
+```
+
+### EL / Fedora
+
+Install the distribution `conmon` package.
+
+```sh
+sudo dnf install conmon
 ```
 
 ## Install Go
@@ -195,11 +227,11 @@ git submodule update --init
 By default your clone will be on the `main` branch which is where development
 of SingularityCE happens. To build a specific version of SingularityCE, check
 out a [release tag](https://github.com/sylabs/singularity/tags) before
-compiling. E.g. to build the 4.2.2 release, checkout the
-`v4.2.2` tag:
+compiling. E.g. to build the 4.3.0-rc.1 release candidate, checkout the
+`v4.3.0-rc.1` tag:
 
 ```sh
-git checkout --recurse-submodules v4.2.2
+git checkout --recurse-submodules v4.3.0-rc.1
 ```
 
 ## Compiling SingularityCE
@@ -302,7 +334,7 @@ build and install the RPM like this:
 <!-- markdownlint-disable MD013 -->
 
 ```sh
-export VERSION=4.2.2 # this is the singularity version, change as you need
+export VERSION=4.3.0-rc.1 # this is the singularity version, change as you need
 
 # Fetch the source
 wget https://github.com/sylabs/singularity/releases/download/v${VERSION}/singularity-ce-${VERSION}.tar.gz
