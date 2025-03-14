@@ -11,7 +11,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/buger/goterm v1.0.4
 	github.com/buger/jsonparser v1.1.1
-	github.com/ccoveille/go-safecast v1.5.0
+	github.com/ccoveille/go-safecast v1.6.0
 	github.com/containerd/containerd/v2 v2.0.3
 	github.com/containerd/continuity v0.4.5
 	github.com/containerd/go-runc v1.1.0
@@ -35,8 +35,9 @@ require (
 	github.com/moby/sys/sequential v0.6.0
 	github.com/moby/sys/userns v0.1.0
 	github.com/moby/term v0.5.2
+	github.com/opencontainers/cgroups v0.0.1
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/opencontainers/runc v1.2.5
+	github.com/opencontainers/runc v1.3.0-rc.1
 	github.com/opencontainers/runtime-spec v1.2.1
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230914150019-408c51e934dc
 	github.com/opencontainers/selinux v1.11.1
@@ -92,7 +93,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cilium/ebpf v0.16.0 // indirect
+	github.com/cilium/ebpf v0.17.3 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/containerd/cgroups/v3 v3.0.5 // indirect
 	github.com/containerd/console v1.0.4 // indirect
@@ -266,7 +267,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250207221924-e9438ea467c6 // indirect
