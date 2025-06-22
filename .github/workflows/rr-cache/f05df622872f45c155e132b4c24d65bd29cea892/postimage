@@ -15,7 +15,7 @@ Build-Depends:
  git,
  golang-@golang_version@,
  libdistro-info-perl,
- libfuse-dev,
+ libfuse3-dev,
  libseccomp-dev,
  libtool,
  pkg-config,
@@ -33,8 +33,8 @@ Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends},
   crun (>= 1.5.0) | runc,
   cryptsetup-bin,
-  fuse,
   fuse2fs,
+  fuse3,
   libseccomp2,
   squashfs-tools,
   uidmap
