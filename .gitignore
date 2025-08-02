@@ -127,3 +127,4 @@ __debug_bin
 */*/*/*/__debug_bin
 */*/*/*/*/__debug_bin
 */*/*/*/*/*/__debug_bin
+!third_party/**
