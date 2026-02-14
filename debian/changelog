@@ -1,3 +1,9 @@
+singularity-ce (4.3.0) unstable; urgency=medium
+
+  * See: https://github.com/sylabs/singularity/blob/main/CHANGELOG.md
+
+ -- Sylabs Community Packaging <community@sylabs.io>  Sat, 14 Feb 2026 00:59:16 +0000
+
 singularity-ce (3.9.1) unstable; urgency=high
 
   * See: https://github.com/sylabs/singularity/blob/main/CHANGELOG.md
