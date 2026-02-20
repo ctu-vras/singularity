@@ -26,6 +26,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +35,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ccoveille/go-safecast"
+	"github.com/ccoveille/go-safecast/v2"
 	"github.com/containerd/containerd/v2/core/diff/apply"
 	ctdmetadata "github.com/containerd/containerd/v2/core/metadata"
 	"github.com/containerd/containerd/v2/core/mount"
@@ -42,9 +43,9 @@ import (
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/containerd/v2/plugins/content/local"
 	"github.com/containerd/containerd/v2/plugins/diff/walking"
-	"github.com/containerd/continuity/fs"
 	runc "github.com/containerd/go-runc"
 	"github.com/containerd/platforms"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/moby/buildkit/cache"
 	"github.com/moby/buildkit/cache/metadata"
 	"github.com/moby/buildkit/executor"
@@ -170,9 +171,7 @@ func NewWorkerOpt(ctx context.Context, root string, snFactory BkSnapshotterFacto
 		xlabels[wlabel.ApparmorProfile] = apparmorProfile
 	}
 
-	for k, v := range labels {
-		xlabels[k] = v
-	}
+	maps.Copy(xlabels, labels)
 	lm := leaseutil.WithNamespace(ctdmetadata.NewLeaseManager(mdb), "buildkit")
 	snap := containerdsnapshot.NewSnapshotter(snFactory.Name, mdb.Snapshotter(snFactory.Name), "buildkit", idmap)
 	if err := cache.MigrateV2(
@@ -456,7 +455,7 @@ func (w *buildExecutor) Run(ctx context.Context, id string, root executor.Mount,
 		spec.Root.Readonly = true
 	}
 
-	newp, err := fs.RootPath(rootFSPath, meta.Cwd)
+	newp, err := securejoin.SecureJoin(rootFSPath, meta.Cwd)
 	if err != nil {
 		return nil, errors.Wrapf(err, "working dir %s points to invalid target", newp)
 	}

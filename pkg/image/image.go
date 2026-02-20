@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025, Sylabs Inc. All rights reserved.
+// Copyright (c) 2018-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -13,7 +13,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ccoveille/go-safecast"
+	"github.com/ccoveille/go-safecast/v2"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/fs"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/user"
 	"github.com/sylabs/singularity/v4/pkg/sylog"
@@ -67,7 +67,7 @@ type debugError string
 
 func (e debugError) Error() string { return string(e) }
 
-func debugErrorf(format string, a ...interface{}) error {
+func debugErrorf(format string, a ...any) error {
 	e := fmt.Sprintf(format, a...)
 	return debugError(e)
 }
