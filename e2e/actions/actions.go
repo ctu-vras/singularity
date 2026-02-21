@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025, Sylabs Inc. All rights reserved.
+// Copyright (c) 2019-2026, Sylabs Inc. All rights reserved.
 // Copyright (c) Contributors to the Apptainer project, established as
 //   Apptainer a Series of LF Projects LLC.
 // This software is licensed under a 3-clause BSD license. Please consult the
@@ -14,6 +14,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -21,10 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/sylabs/singularity/v4/e2e/internal/e2e"
 	"github.com/sylabs/singularity/v4/e2e/internal/testhelper"
-	"github.com/sylabs/singularity/v4/internal/pkg/test/tool/exec"
 	"github.com/sylabs/singularity/v4/internal/pkg/test/tool/require"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/bin"
 	"github.com/sylabs/singularity/v4/internal/pkg/util/fs"
@@ -244,8 +243,36 @@ func (c actionTests) actionExecMultiProfile(t *testing.T) {
 
 			basename := filepath.Base(tmpfile.Name())
 			tmpfilePath := filepath.Join("/tmp", basename)
+
+			// These two are for testing of binds at those paths to testdataTmp
 			vartmpfilePath := filepath.Join("/var/tmp", basename)
-			homePath := filepath.Join("/home", basename)
+			hometmpfilePath := filepath.Join("/home", basename)
+
+			// Create a test file in var_tmp
+			testdataVarTmp := filepath.Join(testdata, "var_tmp")
+			if err := os.Mkdir(testdataVarTmp, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			varTmpfile, err := fs.MakeTmpFile(testdataVarTmp, "testApptainerExec.", 0o644)
+			if err != nil {
+				t.Fatal(err)
+			}
+			varTmpfile.Close()
+
+			// Create a test file in home
+			testdataHome := filepath.Join(testdata, "home")
+			if err := os.Mkdir(testdataHome, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			homeTmpfile, err := fs.MakeTmpFile(testdataHome, "testApptainerExec.", 0o644)
+			if err != nil {
+				t.Fatal(err)
+			}
+			homeTmpfile.Close()
+
+			// These two are for testing if workdir+contain sees them
+			vartmpWorkPath := filepath.Join("/var/tmp", filepath.Base(varTmpfile.Name()))
+			homeWorkPath := "$HOME/" + filepath.Base(homeTmpfile.Name())
 
 			tests := []struct {
 				name        string
@@ -264,8 +291,18 @@ func (c actionTests) actionExecMultiProfile(t *testing.T) {
 					exit: 1,
 				},
 				{
-					name: "WorkdirContain",
+					name: "WorkdirContainTmp",
 					argv: []string{"--workdir", testdata, "--contain", c.env.ImagePath, "test", "-f", tmpfilePath},
+					exit: 0,
+				},
+				{
+					name: "WorkdirContainVarTmp",
+					argv: []string{"--workdir", testdata, "--contain", c.env.ImagePath, "test", "-f", vartmpWorkPath},
+					exit: 0,
+				},
+				{
+					name: "WorkdirContainHome",
+					argv: []string{"--workdir", testdata, "--contain", c.env.ImagePath, "sh", "-c", "test -f " + homeWorkPath},
 					exit: 0,
 				},
 				{
@@ -288,7 +325,7 @@ func (c actionTests) actionExecMultiProfile(t *testing.T) {
 				},
 				{
 					name: "HomePath",
-					argv: []string{"--home", testdataTmp + ":/home", c.env.ImagePath, "test", "-f", homePath},
+					argv: []string{"--home", testdataTmp + ":/home", c.env.ImagePath, "test", "-f", hometmpfilePath},
 					exit: 0,
 				},
 				{
@@ -365,9 +402,8 @@ func (c actionTests) actionShell(t *testing.T) {
 	e2e.EnsureImage(t, c.env)
 
 	hostname, err := os.Hostname()
-	err = errors.Wrap(err, "getting hostname")
 	if err != nil {
-		t.Fatalf("could not get hostname: %+v", err)
+		t.Fatalf("could not get hostname: %v", err)
 	}
 
 	tests := []struct {
@@ -779,14 +815,14 @@ func (c actionTests) PersistentOverlay(t *testing.T) {
 		t.Fatalf("Unable to find 'mksquashfs' binary even though require.Command() was called: %v", err)
 	}
 	cmd := exec.Command(mksquashfsCmd, squashDir, squashfsImage, "-noappend", "-all-root")
-	if res := cmd.Run(t); res.Error != nil {
-		t.Fatalf("Unexpected error while running command.\n%s", res)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Unexpected error while running mksquashfs command: %v\nOutput: %s", err, out)
 	}
 
 	// create the overlay ext3 image
 	cmd = exec.Command("dd", "if=/dev/zero", "of="+ext3Img, "bs=1M", "count=64", "status=none")
-	if res := cmd.Run(t); res.Error != nil {
-		t.Fatalf("Unexpected error while running command.\n%s", res)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Unexpected error while running dd command: %v\nOutput: %s", err, out)
 	}
 
 	mkfsExt3Cmd, err := bin.FindBin("mkfs.ext3")
@@ -794,8 +830,8 @@ func (c actionTests) PersistentOverlay(t *testing.T) {
 		t.Fatalf("Unable to find 'mkfs.ext3' binary even though require.Command() was called: %v", err)
 	}
 	cmd = exec.Command(mkfsExt3Cmd, "-q", "-F", ext3Img)
-	if res := cmd.Run(t); res.Error != nil {
-		t.Fatalf("Unexpected error while running command.\n%s", res)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Unexpected error while running mkfs.ext3 command: %v\nOutput: %s", err, out)
 	}
 
 	// create a sandbox image from test image
@@ -1169,8 +1205,8 @@ func (c actionTests) actionNetnsPath(t *testing.T) {
 	e2e.Privileged(func(t *testing.T) {
 		t.Log("Creating netns")
 		cmd := exec.Command("ip", "netns", "add", nsName)
-		if res := cmd.Run(t); res.Error != nil {
-			t.Fatalf("While creating network namespace: %s", res)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("While creating network namespace: %v\nOutput: %s", err, out)
 		}
 		fi, err := os.Stat(nsPath)
 		if err != nil {
@@ -1187,8 +1223,8 @@ func (c actionTests) actionNetnsPath(t *testing.T) {
 	defer e2e.Privileged(func(t *testing.T) {
 		t.Log("Deleting netns")
 		cmd := exec.Command("ip", "netns", "delete", nsName)
-		if res := cmd.Run(t); res.Error != nil {
-			t.Fatalf("While deleting network namespace: %s", res)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("While deleting network namespace: %v\nOutput: %s", err, out)
 		}
 	})(t)
 
@@ -2047,14 +2083,14 @@ func (c actionTests) bindImage(t *testing.T) {
 		t.Fatalf("Unable to find 'mksquashfs' binary even though require.Command() was called: %v", err)
 	}
 	cmd := exec.Command(mksquashfsCmd, squashDir, squashfsImage, "-noappend", "-all-root")
-	if res := cmd.Run(t); res.Error != nil {
-		t.Fatalf("Unexpected error while running command.\n%s", res)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Unexpected error while running mksquashfs command: %v\nOutput: %s", err, out)
 	}
 
 	// create the overlay ext3 image
 	cmd = exec.Command("dd", "if=/dev/zero", "of="+ext3Img, "bs=1M", "count=64", "status=none")
-	if res := cmd.Run(t); res.Error != nil {
-		t.Fatalf("Unexpected error while running command.\n%s", res)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Unexpected error while running dd command: %v\nOutput: %s", err, out)
 	}
 
 	mkfsExt3Cmd, err := bin.FindBin("mkfs.ext3")
@@ -2062,8 +2098,8 @@ func (c actionTests) bindImage(t *testing.T) {
 		t.Fatalf("Unable to find 'mkfs.ext3' binary even though require.Command() was called: %v", err)
 	}
 	cmd = exec.Command(mkfsExt3Cmd, "-q", "-F", ext3Img)
-	if res := cmd.Run(t); res.Error != nil {
-		t.Fatalf("Unexpected error while running command.\n%s", res)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Unexpected error while running mkfs.ext3 command: %v\nOutput: %s", err, out)
 	}
 
 	// create new SIF images
@@ -2511,6 +2547,14 @@ func (c actionTests) actionNoMount(t *testing.T) {
 			name:          "/etc/localtime",
 			noMount:       "/etc/localtime",
 			noMatch:       "on /etc/localtime",
+			testDefault:   true,
+			testContained: true,
+			exit:          0,
+		},
+		{
+			name:          "/etc/resolv.conf",
+			noMount:       "/etc/resolv.conf",
+			noMatch:       "on /etc/resolv.conf",
 			testDefault:   true,
 			testContained: true,
 			exit:          0,

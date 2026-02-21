@@ -1,6 +1,6 @@
 module github.com/sylabs/singularity/v4
 
-go 1.25.5
+go 1.25.6
 
 require (
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
@@ -27,7 +27,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/go-log/log v0.2.0
 	github.com/gofrs/flock v0.13.0
-	github.com/google/go-containerregistry v0.20.7
+	github.com/google/go-containerregistry v0.21.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.15.0
 	github.com/moby/buildkit v0.27.1
@@ -45,7 +45,6 @@ require (
 	github.com/opencontainers/selinux v1.13.1
 	github.com/opencontainers/umoci v0.6.0
 	github.com/pelletier/go-toml/v2 v2.2.4
-	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.52.0
 	github.com/sebdah/goldie/v2 v2.8.0
 	github.com/seccomp/libseccomp-golang v0.11.1
@@ -55,6 +54,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
+	github.com/stretchr/testify v1.11.1
 	github.com/sylabs/json-resp v0.9.5
 	github.com/sylabs/oci-tools v0.19.0
 	github.com/sylabs/scs-build-client v0.9.20
@@ -64,14 +64,13 @@ require (
 	github.com/sylabs/squashfs v1.0.4
 	github.com/vbauerster/mpb/v8 v8.12.0
 	go.etcd.io/bbolt v1.4.3
-	go.yaml.in/yaml/v3 v3.0.4
+	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/crypto v0.48.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0
 	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
 	google.golang.org/grpc v1.79.1
-	gotest.tools/v3 v3.5.2
 	mvdan.cc/sh/v3 v3.12.0
 	tags.cncf.io/container-device-interface v1.1.0
 	tags.cncf.io/container-device-interface/specs-go v1.1.0
@@ -108,7 +107,7 @@ require (
 	github.com/containerd/go-cni v1.1.13 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/nydus-snapshotter v0.15.10 // indirect
-	github.com/containerd/stargz-snapshotter/estargz v0.18.1 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.18.2 // indirect
 	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/containers/storage v1.59.1 // indirect
@@ -117,6 +116,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20241213102144-19d51d7fe467 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c // indirect
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea // indirect
 	github.com/distribution/reference v0.6.0 // indirect
@@ -180,7 +180,7 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20250417080101-5f8cf70e8c5f // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7 // indirect
 	github.com/josharian/native v1.1.0 // indirect
-	github.com/klauspost/compress v1.18.3 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/letsencrypt/boulder v0.20251110.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
@@ -212,6 +212,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
@@ -274,9 +275,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/mod v0.32.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/oauth2 v0.34.0 // indirect
+	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20251213004720-97cd9d5aeac2 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
