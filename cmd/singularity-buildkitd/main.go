@@ -44,6 +44,8 @@ func main() {
 		RootDir: rootDir,
 	}
 
+	sylog.SyncLogrusLevel()
+
 	if err := bkdaemon.Run(context.Background(), daemonOpts, bkSocket); err != nil {
 		sylog.Fatalf("%s: %v", bkdaemon.DaemonName, err)
 	}

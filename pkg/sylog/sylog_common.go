@@ -5,6 +5,10 @@
 
 package sylog
 
+import (
+	"github.com/sirupsen/logrus"
+)
+
 type messageLevel int
 
 // Log levels.
@@ -41,4 +45,19 @@ var messageLabels = map[messageLevel]string{
 	Verbose2Level: "VERBOSE",
 	Verbose3Level: "VERBOSE",
 	DebugLevel:    "DEBUG",
+}
+
+func SyncLogrusLevel() {
+	switch messageLevel(GetLevel()) {
+	case FatalLevel:
+		logrus.SetLevel(logrus.FatalLevel)
+	case ErrorLevel:
+		logrus.SetLevel(logrus.ErrorLevel)
+	case WarnLevel:
+		logrus.SetLevel(logrus.WarnLevel)
+	case LogLevel, InfoLevel, VerboseLevel, Verbose2Level, Verbose3Level:
+		logrus.SetLevel(logrus.InfoLevel)
+	case DebugLevel:
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 }
