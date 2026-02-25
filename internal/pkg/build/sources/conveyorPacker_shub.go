@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024, Sylabs Inc. All rights reserved.
+// Copyright (c) 2018-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -8,6 +8,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	shub "github.com/sylabs/singularity/v4/internal/pkg/client/shub"
 	"github.com/sylabs/singularity/v4/pkg/build/types"
@@ -28,7 +29,13 @@ func (cp *ShubConveyorPacker) Get(ctx context.Context, b *types.Bundle) (err err
 
 	src := `shub://` + b.Recipe.Header["from"]
 
-	imagePath, err := shub.Pull(ctx, b.Opts.ImgCache, src, b.Opts.TmpDir, b.Opts.NoHTTPS)
+	var imagePath string
+	if b.Opts.ImgCache.IsDisabled() {
+		imageTemp := filepath.Join(b.TmpDir, "library-image")
+		imagePath, err = shub.PullToFile(ctx, b.Opts.ImgCache, imageTemp, src, b.Opts.NoHTTPS)
+	} else {
+		imagePath, err = shub.PullToCache(ctx, b.Opts.ImgCache, src, b.Opts.NoHTTPS)
+	}
 	if err != nil {
 		return fmt.Errorf("while fetching library image: %v", err)
 	}

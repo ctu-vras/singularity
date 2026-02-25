@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2024, Sylabs Inc. All rights reserved.
+// Copyright (c) 2020-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -8,6 +8,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/sylabs/singularity/v4/internal/pkg/client/oras"
@@ -39,7 +40,13 @@ func (cp *OrasConveyorPacker) Get(ctx context.Context, b *types.Bundle) (err err
 		}
 	}
 
-	imagePath, err := oras.Pull(ctx, b.Opts.ImgCache, fullRef, b.Opts.TmpDir, authConfig, b.Opts.DockerAuthFile)
+	var imagePath string
+	if b.Opts.ImgCache.IsDisabled() {
+		imageTemp := filepath.Join(b.TmpDir, "library-image")
+		imagePath, err = oras.PullToFile(ctx, b.Opts.ImgCache, imageTemp, fullRef, authConfig, b.Opts.DockerAuthFile)
+	} else {
+		imagePath, err = oras.PullToCache(ctx, b.Opts.ImgCache, fullRef, authConfig, b.Opts.DockerAuthFile)
+	}
 	if err != nil {
 		return fmt.Errorf("while fetching library image: %v", err)
 	}

@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2023, Sylabs Inc. All rights reserved.
+// Copyright (c) 2022-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -150,6 +150,10 @@ type Options struct {
 	// userns flows we will need to delete the redundant temporary pulled image after
 	// conversion to sandbox.
 	CacheDisabled bool
+	// PullTempDir is a temporary directory used to store an image that was
+	// implicitly pulled with cache disabled, and which must be cleaned up on
+	// container exit.
+	PullTempDir string
 
 	// TransportOptions holds Docker/OCI image transport configuration (auth etc.)
 	// This will be used by a launcher handling OCI images directly.
@@ -565,6 +569,16 @@ func OptNoTmpSandbox(b bool) Option {
 func OptCacheDisabled(b bool) Option {
 	return func(lo *Options) error {
 		lo.CacheDisabled = b
+		return nil
+	}
+}
+
+// OptPullTempDir sets a temporary directory used to store an image that was
+// implicitly pulled with cache disabled, and which must be cleaned up on
+// container exit.
+func OptPullTempDir(d string) Option {
+	return func(lo *Options) error {
+		lo.PullTempDir = d
 		return nil
 	}
 }

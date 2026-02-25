@@ -799,6 +799,15 @@ func (l *Launcher) Exec(ctx context.Context, ep launcher.ExecParams) error {
 		sylog.Errorf("Couldn't unmount session directory: %v", err)
 	}
 
+	// If the original image was implicitly pulled to a temporary dir due to
+	// disabled cache, remove it.
+	if l.cfg.PullTempDir != "" {
+		sylog.Debugf("Removing image pull temp dir: %s", l.cfg.PullTempDir)
+		if cleanupErr := fs.ForceRemoveAll(l.cfg.PullTempDir); cleanupErr != nil {
+			sylog.Errorf("Couldn't remove image pull temp dir %s: %v", l.cfg.PullTempDir, cleanupErr)
+		}
+	}
+
 	if e, ok := err.(*exec.ExitError); ok {
 		status, ok := e.Sys().(syscall.WaitStatus)
 		if ok && status.Signaled() {

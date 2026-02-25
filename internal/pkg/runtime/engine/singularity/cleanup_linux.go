@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024, Sylabs Inc. All rights reserved.
+// Copyright (c) 2018-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -51,24 +51,44 @@ func (e *EngineOperations) CleanupContainer(ctx context.Context, _ error, _ sysc
 		}
 	}
 
-	if tempDir := e.EngineConfig.GetDeleteTempDir(); tempDir != "" && !e.EngineConfig.GetImageFuse() {
-		sylog.Verbosef("Removing image tempDir %s", tempDir)
-		sylog.Infof("Cleaning up image...")
-
-		var err error
-
-		if e.EngineConfig.GetFakeroot() && os.Getuid() != 0 {
-			// this is required when we are using SUID workflow
-			// because master process is not in the fakeroot
-			// context and can get permission denied error during
-			// image removal, so we execute "rm -rf /tmp/image" via
-			// the fakeroot engine
-			err = fakerootCleanup(tempDir)
-		} else {
-			err = os.RemoveAll(tempDir)
+	// If our image is not FUSE mounted then:
+	//
+	// * GetDeleteTempDir being set indicates the rootfs is in a temporary
+	//   directory, which should be removed.
+	// * GetDeletePullTempDir being set indicates the image was implicitly
+	//   pulled to a temporary directory, due to disabled cache, and this should
+	//   be removed.
+	//
+	// If the image is FUSE mounted, this is handled in the HOST_CLEANUP
+	// instead.
+	if !e.EngineConfig.GetImageFuse() {
+		rmdirs := []string{}
+		if tempDir := e.EngineConfig.GetDeleteTempDir(); tempDir != "" {
+			rmdirs = append(rmdirs, tempDir)
 		}
-		if err != nil {
-			sylog.Errorf("failed to delete container image tempDir %s: %s", tempDir, err)
+		if tempDir := e.EngineConfig.GetDeletePullTempDir(); tempDir != "" {
+			rmdirs = append(rmdirs, tempDir)
+		}
+		if len(rmdirs) > 0 {
+			sylog.Infof("Cleaning up image temporary dir(s)...")
+		}
+
+		for _, tempDir := range rmdirs {
+			sylog.Verbosef("Removing %s", tempDir)
+			var err error
+			if e.EngineConfig.GetFakeroot() && os.Getuid() != 0 {
+				// this is required when we are using SUID workflow
+				// because master process is not in the fakeroot
+				// context and can get permission denied error during
+				// image removal, so we execute "rm -rf /tmp/image" via
+				// the fakeroot engine
+				err = fakerootCleanup(tempDir)
+			} else {
+				err = os.RemoveAll(tempDir)
+			}
+			if err != nil {
+				sylog.Errorf("failed to delete temporary dir %s: %s", tempDir, err)
+			}
 		}
 	}
 

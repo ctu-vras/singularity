@@ -9,7 +9,6 @@ package oci
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	gccrv1 "github.com/google/go-containerregistry/pkg/v1"
@@ -48,17 +47,12 @@ func transportOptions(opts PullOptions) *ociimage.TransportOptions {
 	}
 }
 
-// Pull will create a SIF / OCI-SIF image to the cache or direct to a temporary file if cache is disabled
-func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom string, opts PullOptions) (imagePath string, err error) {
-	directTo := ""
+// PullToCache will create a SIF / OCI-SIF image in the cache, and return the path to the cached image.
+func PullToCache(ctx context.Context, imgCache *cache.Handle, pullFrom string, opts PullOptions) (imagePath string, err error) {
 	if imgCache.IsDisabled() {
-		file, err := os.CreateTemp(opts.TmpDir, "sbuild-tmp-cache-")
-		if err != nil {
-			return "", fmt.Errorf("unable to create tmp file: %v", err)
-		}
-		directTo = file.Name()
-		sylog.Infof("Downloading image to tmp cache: %s", directTo)
+		return "", fmt.Errorf("cache is disabled, cannot pull to cache")
 	}
+
 	if opts.OciSif {
 		ocisifOpts := ocisif.PullOptions{
 			TmpDir:      opts.TmpDir,
@@ -71,10 +65,10 @@ func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom string, opts Pul
 			KeepLayers:  opts.KeepLayers,
 			WithCosign:  opts.WithCosign,
 		}
-		return ocisif.PullOCISIF(ctx, imgCache, directTo, pullFrom, ocisifOpts)
+		return ocisif.PullOCISIF(ctx, imgCache, "", pullFrom, ocisifOpts)
 	}
 
-	return pullNativeSIF(ctx, imgCache, directTo, pullFrom, opts)
+	return pullNativeSIF(ctx, imgCache, "", pullFrom, opts)
 }
 
 // PullToFile will create a SIF / OCI-SIF image from the specified oci URI and place it at the specified dest

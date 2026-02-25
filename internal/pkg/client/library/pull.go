@@ -159,24 +159,17 @@ func pullOCI(ctx context.Context, imgCache *cache.Handle, directTo string, pullF
 	return ocisif.PullOCISIF(ctx, imgCache, directTo, pullRef, ocisifOpts)
 }
 
-// Pull will pull a library image to the cache or direct to a temporary file if cache is disabled
-func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom *scslibrary.Ref, opts PullOptions) (imagePath string, err error) {
-	directTo := ""
-
+// PullToCache will pull a library image to the cache, returning the path to the cached image.
+func PullToCache(ctx context.Context, imgCache *cache.Handle, pullFrom *scslibrary.Ref, opts PullOptions) (imagePath string, err error) {
 	if imgCache.IsDisabled() {
-		file, err := os.CreateTemp(opts.TmpDir, "sbuild-tmp-cache-")
-		if err != nil {
-			return "", fmt.Errorf("unable to create tmp file: %v", err)
-		}
-		directTo = file.Name()
-		sylog.Infof("Downloading library image to tmp cache: %s", directTo)
+		return "", fmt.Errorf("cache is disabled, cannot pull to cache")
 	}
 
 	if opts.RequireOciSif {
-		return pullOCI(ctx, imgCache, directTo, pullFrom, opts)
+		return pullOCI(ctx, imgCache, "", pullFrom, opts)
 	}
 
-	return pull(ctx, imgCache, directTo, pullFrom, opts)
+	return pull(ctx, imgCache, "", pullFrom, opts)
 }
 
 // PullToFile will pull a library image to the specified location, through the cache, or directly if cache is disabled

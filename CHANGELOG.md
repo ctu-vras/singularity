@@ -20,6 +20,8 @@
 - Correctly escape ENV vars when importing OCI containers to native SIF, so that
   they match podman / docker behaviour.
 - Clarify error when trying to build --oci from a non-Dockerfile spec.
+- When images are pulled implicitly by actions (run/shell/exec...), and the
+  cache is disabled, correctly clean up the temporary files.
 
 ### New Features & Functionality
 

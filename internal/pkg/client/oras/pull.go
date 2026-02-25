@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2023, Sylabs Inc. All rights reserved.
+// Copyright (c) 2020-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -8,7 +8,6 @@ package oras
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/sylabs/singularity/v4/internal/pkg/cache"
@@ -60,20 +59,12 @@ func pull(ctx context.Context, imgCache *cache.Handle, directTo, pullFrom string
 	return imagePath, nil
 }
 
-// Pull will pull an oras image to the cache or direct to a temporary file if cache is disabled
-func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom, tmpDir string, ociAuth *authn.AuthConfig, reqAuthFile string) (imagePath string, err error) {
-	directTo := ""
-
+// PullToCache will pull an oras image to the cache, and return the path to the cached image.
+func PullToCache(ctx context.Context, imgCache *cache.Handle, pullFrom string, ociAuth *authn.AuthConfig, reqAuthFile string) (imagePath string, err error) {
 	if imgCache.IsDisabled() {
-		file, err := os.CreateTemp(tmpDir, "sbuild-tmp-cache-")
-		if err != nil {
-			return "", fmt.Errorf("unable to create tmp file: %v", err)
-		}
-		directTo = file.Name()
-		sylog.Infof("Downloading oras image to tmp cache: %s", directTo)
+		return "", fmt.Errorf("cache is disabled, cannot pull to cache")
 	}
-
-	return pull(ctx, imgCache, directTo, pullFrom, ociAuth, reqAuthFile)
+	return pull(ctx, imgCache, "", pullFrom, ociAuth, reqAuthFile)
 }
 
 // PullToFile will pull an oras image to the specified location, through the cache, or directly if cache is disabled
