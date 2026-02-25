@@ -39,15 +39,12 @@ import (
 	"github.com/containerd/platforms"
 	sddaemon "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/gofrs/flock"
-	"github.com/moby/buildkit/cache/remotecache"
-	localremotecache "github.com/moby/buildkit/cache/remotecache/local"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/cmd/buildkitd/config"
 	"github.com/moby/buildkit/control"
 	bkoci "github.com/moby/buildkit/executor/oci"
 	"github.com/moby/buildkit/frontend"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
-	"github.com/moby/buildkit/frontend/gateway"
 	"github.com/moby/buildkit/frontend/gateway/forwarder"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/solver"
@@ -153,11 +150,7 @@ func Run(ctx context.Context, opts *Opts, socketPath string) error {
 		return fmt.Errorf("%s: while applying crun cgroup workaround: %v", DaemonName, err)
 	}
 
-	cfg, err := config.LoadFile(defaultConfigPath())
-	if err != nil {
-		return err
-	}
-	setDefaultConfig(&cfg)
+	cfg := defaultConfig()
 
 	cfg.GRPC.Address = []string{socketPath}
 
@@ -168,11 +161,7 @@ func Run(ctx context.Context, opts *Opts, socketPath string) error {
 	server := grpc.NewServer()
 
 	if opts.RootDir != "" {
-		ptr := func(v bool) *bool {
-			return &v
-		}
 		cfg.Root = opts.RootDir
-		cfg.Workers.OCI.GC = ptr(false)
 	}
 
 	// relative path does not work with nightlyone/lockfile
@@ -232,7 +221,18 @@ func Run(ctx context.Context, opts *Opts, socketPath string) error {
 	return err
 }
 
-func setDefaultConfig(cfg *config.Config) {
+func defaultConfig() config.Config {
+	cfg := config.Config{}
+
+	if cfg.Root == "" {
+		cfg.Root = filepath.Join(syfs.ConfigDir(), DaemonName)
+	}
+
+	if cfg.Workers.OCI.Platforms == nil {
+		cfg.Workers.OCI.Platforms = formatPlatforms(archutil.SupportedPlatforms(false))
+	}
+	sylog.Debugf("%s: cfg.Workers.OCI.Platforms: %#v", DaemonName, cfg.Workers.OCI.Platforms)
+
 	rlUID, err := rootless.Getuid()
 	if err != nil {
 		sylog.Fatalf("%s: While trying to determine uid: %v", DaemonName, err)
@@ -253,23 +253,20 @@ func setDefaultConfig(cfg *config.Config) {
 	}
 
 	enabled := true
+	disabled := false
+	cfg.Workers.Containerd.Enabled = &disabled
 	cfg.Workers.OCI.Enabled = &enabled
-
-	if cfg.Root == "" {
-		cfg.Root = filepath.Join(syfs.ConfigDir(), DaemonName)
-	}
-
 	cfg.Workers.OCI.Snapshotter = "overlayfs"
-
-	if cfg.Workers.OCI.Platforms == nil {
-		cfg.Workers.OCI.Platforms = formatPlatforms(archutil.SupportedPlatforms(false))
-	}
-
-	sylog.Debugf("%s: cfg.Workers.OCI.Platforms: %#v", DaemonName, cfg.Workers.OCI.Platforms)
-
-	cfg.Workers.OCI.NetworkConfig = setDefaultNetworkConfig(cfg.Workers.OCI.NetworkConfig)
+	// Disable automatic GC - we will trigger manually on exit.
+	cfg.Workers.OCI.GC = &disabled
 
 	appdefaults.EnsureUserAddressDir()
+
+	if sylog.GetLevel() <= int(sylog.DebugLevel) {
+		cfg.Debug = true
+	}
+
+	return cfg
 }
 
 func ociWorkerInitializer(ctx context.Context, common workerInitializerOpt) ([]worker.Worker, error) {
@@ -292,7 +289,7 @@ func ociWorkerInitializer(ctx context.Context, common workerInitializerOpt) ([]w
 	}
 
 	// Force "host" network mode always, to avoid buildkitd doing any CNI setup
-	common.config.Workers.OCI.Mode = "host"
+	common.config.Workers.OCI.NetworkConfig.Mode = "host" //nolint:staticcheck
 
 	if cfg.Rootless {
 		sylog.Debugf("%s: running in rootless mode", DaemonName)
@@ -431,17 +428,6 @@ func serveGRPC(cfg config.GRPCConfig, server *grpc.Server, errCh chan error) err
 	return nil
 }
 
-func defaultConfigPath() string {
-	return filepath.Join(syfs.ConfigDir(), "buildkitd.toml")
-}
-
-func setDefaultNetworkConfig(nc config.NetworkConfig) config.NetworkConfig {
-	if nc.Mode == "" {
-		nc.Mode = "host"
-	}
-	return nc
-}
-
 func getListener(addr string, uid, gid int, tlsConfig *tls.Config) (net.Listener, error) {
 	addrSlice := strings.SplitN(addr, "://", 2)
 	if len(addrSlice) < 2 {
@@ -476,10 +462,6 @@ func newController(ctx context.Context, cfg *config.Config) (*control.Controller
 	}
 	frontends := map[string]frontend.Frontend{}
 	frontends["dockerfile.v0"] = forwarder.NewGatewayForwarder(wc.Infos(), dockerfile.Build)
-	frontends["gateway.v0"], err = gateway.NewGatewayFrontend(wc.Infos(), cfg.Frontends.Gateway.AllowedRepositories)
-	if err != nil {
-		return nil, err
-	}
 
 	cacheStorage, err := bboltcachestorage.NewStore(filepath.Join(cfg.Root, "cache.db"))
 	if err != nil {
@@ -496,18 +478,18 @@ func newController(ctx context.Context, cfg *config.Config) (*control.Controller
 		return nil, err
 	}
 
-	remoteCacheExporterFuncs := map[string]remotecache.ResolveCacheExporterFunc{
-		"local": localremotecache.ResolveCacheExporterFunc(sessionManager),
+	// Force purne & garbage collection with default params on startup, as automatic GC
+	// is disabled.
+	if err := w.Prune(ctx, nil, getGCPolicy(config.GCConfig{}, cfg.Root)[0]); err != nil {
+		sylog.Errorf("While pruning cache / performing garbage collection: %v", err)
 	}
-	remoteCacheImporterFuncs := map[string]remotecache.ResolveCacheImporterFunc{
-		"local": localremotecache.ResolveCacheImporterFunc(sessionManager),
-	}
+
 	return control.NewController(control.Opt{
 		SessionManager:            sessionManager,
 		WorkerController:          wc,
 		Frontends:                 frontends,
-		ResolveCacheExporterFuncs: remoteCacheExporterFuncs,
-		ResolveCacheImporterFuncs: remoteCacheImporterFuncs,
+		ResolveCacheExporterFuncs: nil,
+		ResolveCacheImporterFuncs: nil,
 		CacheManager:              solver.NewCacheManager(ctx, "local", cacheStorage, worker.NewCacheResultStorage(wc)),
 		Entitlements:              cfg.Entitlements,
 		HistoryDB:                 historyDB,
@@ -515,6 +497,8 @@ func newController(ctx context.Context, cfg *config.Config) (*control.Controller
 		LeaseManager:              w.LeaseManager(),
 		ContentStore:              w.ContentStore(),
 		HistoryConfig:             cfg.History,
+		GarbageCollect:            w.GarbageCollect,
+		GracefulStop:              ctx.Done(),
 	})
 }
 

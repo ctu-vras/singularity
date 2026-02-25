@@ -197,6 +197,7 @@ func startBuildkitd(ctx context.Context, opts *Opts) (bkSocket string, cleanup f
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), sylog.GetEnvVar())
 
 	cleanup = func() {
 		if err := cmd.Cancel(); err != nil {
@@ -275,6 +276,8 @@ func isBuildkitdRunning(ctx context.Context, bkSocket, reqVersion string) (bool,
 }
 
 func buildImage(ctx context.Context, opts *Opts, tarFile *os.File, listenSocket, spec string, clientsideFrontend bool) error {
+	sylog.SyncLogrusLevel()
+
 	c, err := client.New(ctx, listenSocket)
 	if err != nil {
 		return err
