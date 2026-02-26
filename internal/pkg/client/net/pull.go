@@ -171,20 +171,13 @@ func pull(ctx context.Context, imgCache *cache.Handle, directTo, pullFrom string
 	return imagePath, nil
 }
 
-// Pull will pull a http(s) image to the cache or direct to a temporary file if cache is disabled
-func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom string, tmpDir string) (imagePath string, err error) {
-	directTo := ""
-
+// PullToCache will pull a http(s) image to the cache, returning the path to the cached image.
+func PullToCache(ctx context.Context, imgCache *cache.Handle, pullFrom string) (imagePath string, err error) {
 	if imgCache.IsDisabled() {
-		file, err := os.CreateTemp(tmpDir, "sbuild-tmp-cache-")
-		if err != nil {
-			return "", fmt.Errorf("unable to create tmp file: %v", err)
-		}
-		directTo = file.Name()
-		sylog.Infof("Downloading library image to tmp cache: %s", directTo)
+		return "", fmt.Errorf("cache is disabled, cannot pull to cache")
 	}
 
-	return pull(ctx, imgCache, directTo, pullFrom)
+	return pull(ctx, imgCache, "", pullFrom)
 }
 
 // PullToFile will pull an http(s) image to the specified location, through the cache, or directly if cache is disabled

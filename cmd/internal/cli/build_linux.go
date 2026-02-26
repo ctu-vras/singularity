@@ -211,6 +211,10 @@ func runBuild(cmd *cobra.Command, args []string) {
 	}
 
 	if isOCI {
+		if !fs.IsFile(spec) {
+			sylog.Fatalf("When building with --oci the build source must be a Dockerfile.")
+		}
+
 		reqArch := ""
 		if cmd.Flags().Lookup("arch").Changed {
 			reqArch = buildArgs.arch

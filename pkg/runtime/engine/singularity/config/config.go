@@ -134,6 +134,7 @@ type JSONConfig struct {
 	SignalPropagation     bool              `json:"signalPropagation,omitempty"`
 	RestoreUmask          bool              `json:"restoreUmask,omitempty"`
 	DeleteTempDir         string            `json:"deleteTempDir,omitempty"`
+	DeletePullTempDir     string            `json:"deletePullTempDir,omitempty"`
 	ImageFuse             bool              `json:"imageFuse,omitempty"`
 	Umask                 int               `json:"umask,omitempty"`
 	XdgRuntimeDir         string            `json:"xdgRuntimeDir,omitempty"`
@@ -666,16 +667,33 @@ func (e *EngineConfig) GetFakeroot() bool {
 	return e.JSON.Fakeroot
 }
 
-// GetDeleteTempDir returns the path of the temporary directory containing the root filesystem
-// which must be deleted after use. If no deletion is required, the empty string is returned.
+// GetDeleteTempDir returns the path of a temporary directory containing the
+// root filesystem which must be deleted after use, if a temporary sandbox was
+// created from an image or an image was FUSE mounted. If no deletion is
+// required, the empty string is returned.
 func (e *EngineConfig) GetDeleteTempDir() string {
 	return e.JSON.DeleteTempDir
 }
 
-// SetDeleteTempDir sets dir as the path of the temporary directory containing the root filesystem,
-// which must be deleted after use.
+// SetDeleteTempDir sets dir as the path of a temporary directory containing
+// the root filesystem which must be deleted after use, if a temporary sandbox
+// was created from an image or an image was FUSE mounted.
 func (e *EngineConfig) SetDeleteTempDir(dir string) {
 	e.JSON.DeleteTempDir = dir
+}
+
+// GetDeletePullTempDir returns the path of a temporary directory containing
+// an image that was implicitly pulled with cache disabled, and which must be
+// deleted after use. If no deletion is required, the empty string is returned.
+func (e *EngineConfig) GetDeletePullTempDir() string {
+	return e.JSON.DeletePullTempDir
+}
+
+// SetDeletePullTempDir sets the path of a temporary directory containing
+// an image that was implicitly pulled with cache disabled, and which must be
+// deleted after use.
+func (e *EngineConfig) SetDeletePullTempDir(dir string) {
+	e.JSON.DeletePullTempDir = dir
 }
 
 // SetImageFuse sets whether the ImageDir is a FUSE mount.

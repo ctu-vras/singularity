@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022, Sylabs Inc. All rights reserved.
+// Copyright (c) 2018-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -173,20 +173,12 @@ func pull(ctx context.Context, imgCache *cache.Handle, directTo, pullFrom string
 	return imagePath, nil
 }
 
-// Pull will pull a shub image to the cache or direct to a temporary file if cache is disabled
-func Pull(ctx context.Context, imgCache *cache.Handle, pullFrom, tmpDir string, noHTTPS bool) (imagePath string, err error) {
-	directTo := ""
-
+// PullToCache will pull a shub image to the cache, and return the path to the cached image.
+func PullToCache(ctx context.Context, imgCache *cache.Handle, pullFrom string, noHTTPS bool) (imagePath string, err error) {
 	if imgCache.IsDisabled() {
-		file, err := os.CreateTemp(tmpDir, "sbuild-tmp-cache-")
-		if err != nil {
-			return "", fmt.Errorf("unable to create tmp file: %v", err)
-		}
-		directTo = file.Name()
-		sylog.Infof("Downloading shub image to tmp cache: %s", directTo)
+		return "", fmt.Errorf("cache is disabled, cannot pull to cache")
 	}
-
-	return pull(ctx, imgCache, directTo, pullFrom, noHTTPS)
+	return pull(ctx, imgCache, "", pullFrom, noHTTPS)
 }
 
 // PullToFile will pull a shub image to the specified location, through the cache, or directly if cache is disabled

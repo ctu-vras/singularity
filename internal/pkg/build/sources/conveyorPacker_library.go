@@ -1,5 +1,5 @@
 // Copyright (c) 2020, Control Command Inc. All rights reserved.
-// Copyright (c) 2018-2024, Sylabs Inc. All rights reserved.
+// Copyright (c) 2018-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -8,7 +8,9 @@ package sources
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"path/filepath"
 
 	golog "github.com/go-log/log"
 
@@ -72,8 +74,15 @@ func (cp *LibraryConveyorPacker) Get(ctx context.Context, b *types.Bundle) (err 
 		TmpDir:        cp.b.TmpDir,
 		Platform:      cp.b.Opts.Platform,
 	}
-	imagePath, err := library.Pull(ctx, b.Opts.ImgCache, imageRef, pullOpts)
-	if err != nil {
+
+	var imagePath string
+	if b.Opts.ImgCache.IsDisabled() {
+		imageTemp := filepath.Join(b.TmpDir, "library-image")
+		imagePath, err = library.PullToFile(ctx, b.Opts.ImgCache, imageTemp, imageRef, pullOpts)
+	} else {
+		imagePath, err = library.PullToCache(ctx, b.Opts.ImgCache, imageRef, pullOpts)
+	}
+	if err != nil && !errors.Is(err, library.ErrLibraryPullUnsigned) {
 		return fmt.Errorf("while fetching library image: %v", err)
 	}
 

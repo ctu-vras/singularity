@@ -1,5 +1,5 @@
 // Copyright (c) 2020, Control Command Inc. All rights reserved.
-// Copyright (c) 2018-2023, Sylabs Inc. All rights reserved.
+// Copyright (c) 2018-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -53,6 +54,7 @@ type contextKey string
 
 const (
 	keyOrigImageURI contextKey = "origImageURI"
+	keyPullTempDir  contextKey = "pullTempDir"
 )
 
 // actionPreRun will:
@@ -60,7 +62,7 @@ const (
 //   - and implement flag inferences for:
 //     --compat
 //     --hostname
-//   - run replaceURIWithImage;
+//   - retrieve remote images to the cache or a temporary directory for execution
 func actionPreRun(cmd *cobra.Command, args []string) {
 	// For compatibility - we still set USER_PATH so it will be visible in the
 	// container, and can be used there if needed. USER_PATH is not used by
@@ -87,39 +89,76 @@ func actionPreRun(cmd *cobra.Command, args []string) {
 		utsNamespace = true
 	}
 
-	origImageURI := replaceURIWithImage(cmd.Context(), cmd, args)
+	// Store the original image URI in the command context, so it can be used by
+	// any fallback logic.
+	origImageURI := args[0]
 	cmd.SetContext(context.WithValue(cmd.Context(), keyOrigImageURI, &origImageURI))
+
+	// Replace remote URI with a local image path, pulling to cache or a
+	// temporary directory as needed.
+	localImage, pullTempDir := uriToImage(cmd.Context(), cmd, origImageURI)
+	args[0] = localImage
+
+	// Track the pullTempDir (if set) in the context, so it can be cleaned up on container exit.
+	cmd.SetContext(context.WithValue(cmd.Context(), keyPullTempDir, &pullTempDir))
 }
 
-func handleOCI(ctx context.Context, imgCache *cache.Handle, cmd *cobra.Command, pullFrom string) (string, error) {
-	ociAuth, err := makeOCICredentials(cmd)
+func uriToCacheImage(ctx context.Context, refType string, cmd *cobra.Command, imgCache *cache.Handle, pullFrom string) (string, error) {
+	switch refType {
+	case uri.Library:
+		return handleLibrary(ctx, imgCache, "", pullFrom)
+	case uri.Oras:
+		ociAuth, err := makeOCICredentials(cmd)
+		if err != nil {
+			return "", fmt.Errorf("while creating docker credentials: %v", err)
+		}
+		return oras.PullToCache(ctx, imgCache, pullFrom, ociAuth, reqAuthFile)
+	case uri.Shub:
+		return shub.PullToCache(ctx, imgCache, pullFrom, noHTTPS)
+	case ociimage.SupportedTransport(refType):
+		return handleOCI(ctx, cmd, imgCache, "", pullFrom)
+	case uri.HTTP:
+		return net.PullToCache(ctx, imgCache, pullFrom)
+	case uri.HTTPS:
+		return net.PullToCache(ctx, imgCache, pullFrom)
+	default:
+		return "", fmt.Errorf("unsupported transport type: %s", refType)
+	}
+}
+
+func uriToTempImage(ctx context.Context, refType string, cmd *cobra.Command, imgCache *cache.Handle, pullFrom string) (string, string, error) {
+	pullTempDir, err := os.MkdirTemp(tmpDir, "singularity-action-pull-")
 	if err != nil {
-		sylog.Fatalf("While creating Docker credentials: %v", err)
+		return "", "", fmt.Errorf("unable to create temporary directory: %w", err)
+	}
+	tmpImage := filepath.Join(pullTempDir, "image")
+	sylog.Debugf("Cache disabled, pulling image to temporary file: %s", tmpImage)
+
+	switch refType {
+	case uri.Library:
+		_, err = handleLibrary(ctx, imgCache, tmpImage, pullFrom)
+	case uri.Oras:
+		ociAuth, authErr := makeOCICredentials(cmd)
+		if authErr != nil {
+			return "", "", fmt.Errorf("while creating docker credentials: %v", authErr)
+		}
+		_, err = oras.PullToFile(ctx, imgCache, tmpImage, pullFrom, ociAuth, reqAuthFile)
+	case uri.Shub:
+		_, err = shub.PullToFile(ctx, imgCache, tmpImage, pullFrom, noHTTPS)
+	case ociimage.SupportedTransport(refType):
+		_, err = handleOCI(ctx, cmd, imgCache, tmpImage, pullFrom)
+	case uri.HTTP:
+		_, err = net.PullToFile(ctx, imgCache, tmpImage, pullFrom)
+	case uri.HTTPS:
+		_, err = net.PullToFile(ctx, imgCache, tmpImage, pullFrom)
+	default:
+		return "", "", fmt.Errorf("unsupported transport type: %s", refType)
 	}
 
-	pullOpts := oci.PullOptions{
-		TmpDir:      tmpDir,
-		OciAuth:     ociAuth,
-		DockerHost:  dockerHost,
-		NoHTTPS:     noHTTPS,
-		OciSif:      isOCI,
-		KeepLayers:  keepLayers,
-		Platform:    getOCIPlatform(),
-		ReqAuthFile: reqAuthFile,
-	}
-
-	return oci.Pull(ctx, imgCache, pullFrom, pullOpts)
+	return tmpImage, pullTempDir, err
 }
 
-func handleOras(ctx context.Context, imgCache *cache.Handle, cmd *cobra.Command, pullFrom string) (string, error) {
-	ociAuth, err := makeOCICredentials(cmd)
-	if err != nil {
-		return "", fmt.Errorf("while creating docker credentials: %v", err)
-	}
-	return oras.Pull(ctx, imgCache, pullFrom, tmpDir, ociAuth, reqAuthFile)
-}
-
-func handleLibrary(ctx context.Context, imgCache *cache.Handle, pullFrom string) (string, error) {
+func handleLibrary(ctx context.Context, imgCache *cache.Handle, tmpImage, pullFrom string) (string, error) {
 	r, err := library.NormalizeLibraryRef(pullFrom)
 	if err != nil {
 		return "", err
@@ -149,50 +188,71 @@ func handleLibrary(ctx context.Context, imgCache *cache.Handle, pullFrom string)
 		TmpDir:        tmpDir,
 		Platform:      getOCIPlatform(),
 	}
-	return library.Pull(ctx, imgCache, r, pullOpts)
-}
 
-func handleShub(ctx context.Context, imgCache *cache.Handle, pullFrom string) (string, error) {
-	return shub.Pull(ctx, imgCache, pullFrom, tmpDir, noHTTPS)
-}
-
-func handleNet(ctx context.Context, imgCache *cache.Handle, pullFrom string) (string, error) {
-	return net.Pull(ctx, imgCache, pullFrom, tmpDir)
-}
-
-func replaceURIWithImage(ctx context.Context, cmd *cobra.Command, args []string) string {
-	origImageURI := args[0]
-	t, _ := uri.Split(origImageURI)
-	// If joining an instance (instance://xxx), or we have a bare filename then
-	// no retrieval / conversion is required.
-	if t == "instance" || t == "" {
-		return origImageURI
+	var imagePath string
+	if tmpImage == "" {
+		imagePath, err = library.PullToCache(ctx, imgCache, r, pullOpts)
+	} else {
+		imagePath, err = library.PullToFile(ctx, imgCache, tmpImage, r, pullOpts)
 	}
 
-	var image string
-	var err error
+	if err != nil && err != library.ErrLibraryPullUnsigned {
+		return "", err
+	}
+	if err == library.ErrLibraryPullUnsigned {
+		sylog.Warningf("Skipping container verification")
+	}
+	return imagePath, nil
+}
 
-	// Create a cache handle only when we know we are using a URI
+func handleOCI(ctx context.Context, cmd *cobra.Command, imgCache *cache.Handle, tmpImage, pullFrom string) (string, error) {
+	ociAuth, err := makeOCICredentials(cmd)
+	if err != nil {
+		sylog.Fatalf("While creating Docker credentials: %v", err)
+	}
+
+	pullOpts := oci.PullOptions{
+		TmpDir:      tmpDir,
+		OciAuth:     ociAuth,
+		DockerHost:  dockerHost,
+		NoHTTPS:     noHTTPS,
+		OciSif:      isOCI,
+		KeepLayers:  keepLayers,
+		Platform:    getOCIPlatform(),
+		ReqAuthFile: reqAuthFile,
+	}
+
+	if tmpImage == "" {
+		return oci.PullToCache(ctx, imgCache, pullFrom, pullOpts)
+	}
+	return oci.PullToFile(ctx, imgCache, tmpImage, pullFrom, pullOpts)
+}
+
+// uriToImage will pull a remote image to the cache, or a temporary directory if
+// the cache is disabled. It returns a path to the pulled image, and the
+// temporary directory that should be removed when the container exits, where
+// applicable.
+func uriToImage(ctx context.Context, cmd *cobra.Command, origImageURI string) (imagePath, tempDir string) {
+	refType, _ := uri.Split(origImageURI)
+	// If joining an instance (instance://xxx), or we have a bare filename then
+	// no retrieval / conversion is required.
+	if refType == "instance" || refType == "" {
+		return origImageURI, ""
+	}
+
 	imgCache := getCacheHandle(cache.Config{Disable: disableCache})
 	if imgCache == nil {
 		sylog.Fatalf("failed to create a new image cache handle")
 	}
 
-	switch t {
-	case uri.Library:
-		image, err = handleLibrary(ctx, imgCache, origImageURI)
-	case uri.Oras:
-		image, err = handleOras(ctx, imgCache, cmd, origImageURI)
-	case uri.Shub:
-		image, err = handleShub(ctx, imgCache, origImageURI)
-	case ociimage.SupportedTransport(t):
-		image, err = handleOCI(ctx, imgCache, cmd, origImageURI)
-	case uri.HTTP:
-		image, err = handleNet(ctx, imgCache, origImageURI)
-	case uri.HTTPS:
-		image, err = handleNet(ctx, imgCache, origImageURI)
-	default:
-		sylog.Fatalf("Unsupported transport type: %s", t)
+	// If the cache is disabled, then we pull to a temporary location, which
+	// will need to be removed on container exit. Otherwise, we pull to the
+	// cache and run directly from there.
+	var err error
+	if disableCache {
+		imagePath, tempDir, err = uriToTempImage(ctx, refType, cmd, imgCache, origImageURI)
+	} else {
+		imagePath, err = uriToCacheImage(ctx, refType, cmd, imgCache, origImageURI)
 	}
 
 	// If we are in OCI mode, then we can still attempt to run from a directory
@@ -206,16 +266,26 @@ func replaceURIWithImage(ctx context.Context, cmd *cobra.Command, args []string)
 		}
 		sylog.Warningf("%v", err)
 		sylog.Warningf("OCI-SIF could not be created, falling back to unpacking OCI bundle in temporary sandbox dir")
-		return origImageURI
+		return origImageURI, ""
 	}
 
 	if err != nil {
 		sylog.Fatalf("Unable to handle %s uri: %v", origImageURI, err)
 	}
 
-	args[0] = image
+	return imagePath, tempDir
+}
 
-	return origImageURI
+func pullTempDirFromContext(ctx context.Context) string {
+	pullTempDirPtr := ctx.Value(keyPullTempDir)
+	if pullTempDirPtr != nil {
+		pullTempDir, ok := pullTempDirPtr.(*string)
+		if !ok {
+			sylog.Fatalf("unable to recover pull temp dir (expected string, found: %T) from context", pullTempDirPtr)
+		}
+		return *pullTempDir
+	}
+	return ""
 }
 
 // ExecCmd represents the exec command
@@ -227,10 +297,11 @@ var ExecCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// singularity exec <image> <command> [args...]
 		ep := launcher.ExecParams{
-			Image:   args[0],
-			Action:  "exec",
-			Process: args[1],
-			Args:    args[2:],
+			Image:       args[0],
+			PullTempDir: pullTempDirFromContext(cmd.Context()),
+			Action:      "exec",
+			Process:     args[1],
+			Args:        args[2:],
 		}
 		if err := launchContainer(cmd, ep); err != nil {
 			sylog.Fatalf("%s", err)
@@ -252,8 +323,9 @@ var ShellCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// singularity shell <image>
 		ep := launcher.ExecParams{
-			Image:  args[0],
-			Action: "shell",
+			Image:       args[0],
+			PullTempDir: pullTempDirFromContext(cmd.Context()),
+			Action:      "shell",
 		}
 		if err := launchContainer(cmd, ep); err != nil {
 			sylog.Fatalf("%s", err)
@@ -275,9 +347,10 @@ var RunCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// singularity run <image> [args...]
 		ep := launcher.ExecParams{
-			Image:  args[0],
-			Action: "run",
-			Args:   args[1:],
+			Image:       args[0],
+			PullTempDir: pullTempDirFromContext(cmd.Context()),
+			Action:      "run",
+			Args:        args[1:],
 		}
 		if err := launchContainer(cmd, ep); err != nil {
 			sylog.Fatalf("%s", err)
@@ -299,9 +372,10 @@ var TestCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// singularity test <image> [args...]
 		ep := launcher.ExecParams{
-			Image:  args[0],
-			Action: "test",
-			Args:   args[1:],
+			Image:       args[0],
+			PullTempDir: pullTempDirFromContext(cmd.Context()),
+			Action:      "test",
+			Args:        args[1:],
 		}
 		if err := launchContainer(cmd, ep); err != nil {
 			sylog.Fatalf("%s", err)
@@ -396,6 +470,7 @@ func launchContainer(cmd *cobra.Command, ep launcher.ExecParams) error {
 		launcher.OptNoCompat(noCompat),
 		launcher.OptTmpSandbox(tmpSandbox),
 		launcher.OptNoTmpSandbox(noTmpSandbox),
+		launcher.OptPullTempDir(ep.PullTempDir),
 	}
 
 	// Explicitly use the interface type here, as we will add alternative launchers later...

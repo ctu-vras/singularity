@@ -2960,6 +2960,81 @@ func (c actionTests) actionAuthTester(t *testing.T, withCustomAuthFile bool, pro
 	}
 }
 
+// actionCleanup tests that an image pulled implicitly to a temp dir, due to
+// --disable-cache, is cleaned up.
+func (c actionTests) actionCleanup(t *testing.T) {
+	e2e.EnsureORASImage(t, c.env)
+
+	tests := []struct {
+		name    string
+		profile e2e.Profile
+		flags   []string
+	}{
+		{
+			name:    "User",
+			profile: e2e.UserProfile,
+			flags:   []string{},
+		},
+		{
+			name:    "UserTmpSandbox",
+			profile: e2e.UserProfile,
+			flags:   []string{"--tmp-sandbox"},
+		},
+		{
+			name:    "UserNamespace",
+			profile: e2e.UserNamespaceProfile,
+			flags:   []string{},
+		},
+		{
+			name:    "UserNamespaceTmpSandbox",
+			profile: e2e.UserNamespaceProfile,
+			flags:   []string{"--tmp-sandbox"},
+		},
+		{
+			name:    "Fakeroot",
+			profile: e2e.FakerootProfile,
+		},
+		{
+			name:    "FakerootTmpSandbox",
+			profile: e2e.FakerootProfile,
+			flags:   []string{"--tmp-sandbox"},
+		},
+		{
+			name:    "OCIUser",
+			profile: e2e.OCIUserProfile,
+		},
+		{
+			name:    "OCIFakeroot",
+			profile: e2e.OCIFakerootProfile,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir, cleanup := e2e.MakeTempDir(t, c.env.TestDir, "action-cleanup-", "")
+			defer cleanup(t)
+			tempEnv := "SINGULARITY_TMPDIR=" + tempDir
+
+			c.env.RunSingularity(
+				t,
+				e2e.WithProfile(tt.profile),
+				e2e.WithCommand("exec"),
+				e2e.WithArgs(append(tt.flags, "--disable-cache", c.env.OrasTestImage, "/bin/true")...),
+				e2e.WithEnv(append(os.Environ(), tempEnv)),
+				e2e.ExpectExit(0),
+			)
+
+			entries, err := os.ReadDir(tempDir)
+			if err != nil {
+				t.Fatalf("could not read contents of temp dir %q: %s", tempDir, err)
+			}
+			if len(entries) != 0 {
+				t.Errorf("SINGULARITY_TMPDIR had %d entries after execution, expected 0\n%v", len(entries), entries)
+			}
+		})
+	}
+}
+
 // E2ETests is the main func to trigger the test suite
 func E2ETests(env e2e.TestEnv) testhelper.Tests {
 	c := actionTests{
@@ -3015,6 +3090,7 @@ func E2ETests(env e2e.TestEnv) testhelper.Tests {
 		"relWorkdirScratch":            np(c.relWorkdirScratch),          // test relative --workdir with --scratch
 		"ociRelWorkdirScratch":         np(c.actionOciRelWorkdirScratch), // test relative --workdir with --scratch in OCI mode
 		"auth":                         np(c.actionAuth),                 // tests action cmds w/authenticated pulls from OCI registries
+		"actionCleanup":                c.actionCleanup,                  // test cleanup of temporary files from action
 		//
 		// OCI Runtime Mode
 		//

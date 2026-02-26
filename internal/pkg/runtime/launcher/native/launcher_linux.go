@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025, Sylabs Inc. All rights reserved.
+// Copyright (c) 2019-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -360,6 +360,12 @@ func (l *Launcher) Exec(ctx context.Context, ep launcher.ExecParams) error {
 	// Get image ready to run, if needed, via FUSE mount / extraction.
 	if err := l.prepareImage(ctx, ep.Image); err != nil {
 		return fmt.Errorf("while preparing image: %s", err)
+	}
+
+	// If the image we are running was pulled into a temp dir, because cache is
+	// disabled, make sure to clean that up on exit.
+	if ep.PullTempDir != "" {
+		l.engineConfig.SetDeletePullTempDir(ep.PullTempDir)
 	}
 
 	// Call the starter binary using our prepared config.

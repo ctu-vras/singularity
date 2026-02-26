@@ -49,9 +49,9 @@ Enterprise Performance Computing (EPC)`
 
   BUILD SPEC:
 
-  The build spec target is a definition (def) file, local image, or URI that can 
-  be used to create a Singularity container. Several different local target 
-  formats exist:
+  In native mode, the build spec target is a definition (def) file, local image,
+  or URI that can be used to create a Singularity container. Several different
+  local target formats exist:
 
       def file  : This is a recipe for building a container (examples below)
       directory:  A directory structure containing a (ch)root file system
@@ -63,7 +63,10 @@ Enterprise Performance Computing (EPC)`
       library://  an image library (default https://cloud.sylabs.io/library)
       docker://   a Docker/OCI registry (default Docker Hub)
       shub://     a Singularity registry (default Singularity Hub)
-      oras://     an OCI registry that holds SIF files using ORAS`
+      oras://     an OCI registry that holds SIF files using ORAS
+
+  When run with the --oci flag, the spec must be a valid Dockerfile, and output
+  is always an OCI-SIF image.`
 
 	BuildExample string = `
 
@@ -160,7 +163,10 @@ Enterprise Performance Computing (EPC)`
       Build a base sandbox from DockerHub, make changes to it, then build sif
           $ singularity build --sandbox /tmp/debian docker://debian:latest
           $ singularity exec --writable /tmp/debian apt-get install python
-          $ singularity build /tmp/debian2.sif /tmp/debian`
+          $ singularity build /tmp/debian2.sif /tmp/debian
+
+      Build an OCI-SIF image from a Dockerfile:
+          $ singularity build --oci /tmp/myimage.oci.sif /path/to/Dockerfile`
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Cache

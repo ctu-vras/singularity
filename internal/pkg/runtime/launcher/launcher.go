@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2023, Sylabs Inc. All rights reserved.
+// Copyright (c) 2022-2026, Sylabs Inc. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -28,6 +28,10 @@ type Launcher interface {
 type ExecParams struct {
 	// Image is the container image to execute, as a bare path, or <transport>:<path>.
 	Image string
+	// PullTempDir is a temporary directory used to store an image that was
+	// implicitly pulled with cache disabled, and which must be cleaned up on
+	// container exit.
+	PullTempDir string
 	// Action is one of exec/run/shell/start/test as specified on the CLI.
 	Action string
 	// Process is the command to execute as the container process, where applicable.
