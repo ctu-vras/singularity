@@ -24,6 +24,9 @@
   cache is disabled, correctly clean up the temporary files.
 - Ensure singularity-buildkitd runs effective GC at the start of each run.
 - Apply --debug flag to buildkit logging correctly.
+- Avoid OOM by buffering `docker-daemon:` images via a temporary file instead of
+  memory. Note that the file is created in `$TMPDIR` - the dependency involved
+  cannot be instructed to use `$SINGULARITY_TMPDIR` at this time.
 
 ### New Features & Functionality
 

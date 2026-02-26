@@ -146,6 +146,7 @@ func getDaemonImage(ctx context.Context, src string, tOpts *TransportOptions) (v
 
 	dOpts := []daemon.Option{
 		daemon.WithContext(ctx),
+		daemon.WithFileBufferedOpener(),
 	}
 
 	if tOpts != nil && tOpts.DockerDaemonHost != "" {
@@ -155,7 +156,6 @@ func getDaemonImage(ctx context.Context, src string, tOpts *TransportOptions) (v
 		}
 		dOpts = append(dOpts, daemon.WithClient(dc))
 	}
-
 	return daemon.Image(srcRef, dOpts...)
 }
 
