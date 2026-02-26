@@ -36,6 +36,12 @@
 
 - Requires Go 1.25.6 or above, due to various dependencies.
 
+## 4.3.7 \[2026-01-16\]
+
+### Bug Fixes
+
+- Don't attempt to set `relatime` on workdir / scratch mounts in OCI-Mode.
+
 ## 4.3.6 \[2025-12-16\]
 
 ### Security Related Fixes
