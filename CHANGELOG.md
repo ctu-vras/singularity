@@ -1,10 +1,9 @@
 # SingularityCE Changelog
 
-## Unreleased
+## 4.4.0 \[2026-02-26\]
 
 ### Bug Fixes
 
-- Don't attempt to set `relatime` on workdir / scratch mounts in OCI-Mode.
 - Include the home directory in the `--workdir` option (which is a
   modifier of the `--contain` option).  This has always been in the
   `--workdir` usage description but the home directory has not actually
@@ -24,6 +23,9 @@
   cache is disabled, correctly clean up the temporary files.
 - Ensure singularity-buildkitd runs effective GC at the start of each run.
 - Apply --debug flag to buildkit logging correctly.
+- Avoid OOM by buffering `docker-daemon:` images via a temporary file instead of
+  memory. Note that the file is created in `$TMPDIR` - the dependency involved
+  cannot be instructed to use `$SINGULARITY_TMPDIR` at this time.
 
 ### New Features & Functionality
 
@@ -32,7 +34,13 @@
 
 ### Requirements / Packaging
 
-- Requires Go 1.25.0 or above, due to various dependencies.
+- Requires Go 1.25.6 or above, due to various dependencies.
+
+## 4.3.7 \[2026-01-16\]
+
+### Bug Fixes
+
+- Don't attempt to set `relatime` on workdir / scratch mounts in OCI-Mode.
 
 ## 4.3.6 \[2025-12-16\]
 

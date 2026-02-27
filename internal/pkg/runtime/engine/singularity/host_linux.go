@@ -34,14 +34,21 @@ func (e *EngineOperations) CleanupHost(ctx context.Context) (err error) {
 		return nil
 	}
 
-	// GetDeleteTempDir being set indicates the rootfs is FUSE mounted in a
-	// temporary directory, which should unmounted and removed. It should have
-	// been cleaned up with a lazy unmount in PostStartHost, but if something
-	// went wrong there, we try again here.
+	// Accumulate errors instead of returning early, so all cleanup steps are attempted.
+	errors := []error{}
+
+	// GetDeleteTempDir being set with GetImageFuse also true indicates the
+	// rootfs is FUSE mounted on a subdir of GetDeleteTempDir, and should be
+	// unmounted and the tempdir removed. It should have been cleaned up with a
+	// lazy unmount in PostStartHost, but if something went wrong there, or we
+	// didn't ever start the container, we clean up here.
 	if tmpDir := e.EngineConfig.GetDeleteTempDir(); tmpDir != "" {
 		if fs.IsDir(tmpDir) {
-			sylog.Debugf("Cleaning up image FUSE mount temporary directory %s", tmpDir)
-			return cleanFUSETempDir(ctx, e)
+			sylog.Debugf("FUSE mount temporary directory still present in CleanupHost: %s", tmpDir)
+			if err := cleanFUSETempDir(ctx, e); err != nil {
+				sylog.Errorf("Failed to clean up FUSE mount: %v", err)
+				errors = append(errors, err)
+			}
 		}
 	}
 
@@ -52,8 +59,13 @@ func (e *EngineOperations) CleanupHost(ctx context.Context) (err error) {
 		sylog.Debugf("Cleaning up image pull temporary directory %s", tmpDir)
 		err := os.RemoveAll(tmpDir)
 		if err != nil {
-			return fmt.Errorf("failed to delete temporary directory %s: %s", tmpDir, err)
+			sylog.Errorf("Failed to delete image pull temporary directory %s: %s", tmpDir, err)
+			errors = append(errors, fmt.Errorf("failed to delete image pull temporary directory %s: %w", tmpDir, err))
 		}
+	}
+
+	if errors != nil {
+		return fmt.Errorf("encountered errors during CleanupHost: %v", errors)
 	}
 
 	return nil
