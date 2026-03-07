@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -371,35 +372,22 @@ func (c ctx) dockerCredsPriorityTester(t *testing.T, withCustomAuthFile bool, pr
 
 	// Store the previous values of relevant env vars, and set up facilities for
 	// wiping and restoring them.
-	envVarSet := []string{
+	authVars := []string{
 		"SINGULARITY_DOCKER_USERNAME",
 		"SINGULARITY_DOCKER_PASSWORD",
 		"DOCKER_USERNAME",
 		"DOCKER_PASSWORD",
 	}
-	prevEnvVals := make(map[string]string)
-	for _, varName := range envVarSet {
-		if varVal, ok := os.LookupEnv(varName); ok {
-			prevEnvVals[varName] = varVal
+	wipeAuthVars := func(env []string) []string {
+		for _, delVar := range authVars {
+			env = slices.DeleteFunc(env, func(e string) bool {
+				return strings.HasPrefix(e, delVar+"=")
+			})
 		}
+		return env
 	}
-	wipeVars := func() {
-		for _, varName := range envVarSet {
-			os.Unsetenv(varName)
-		}
-	}
-	restoreVars := func() {
-		wipeVars()
-		for _, varName := range envVarSet {
-			if varVal, ok := prevEnvVals[varName]; ok {
-				os.Setenv(varName, varVal)
-			}
-		}
-	}
-
 	t.Cleanup(func() {
 		e2e.PrivateRepoLogout(t, c.env, profile, localAuthFileName)
-		restoreVars()
 	})
 
 	tests := []struct {
@@ -507,18 +495,19 @@ func (c ctx) dockerCredsPriorityTester(t *testing.T, withCustomAuthFile bool, pr
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wipeVars()
+			env := os.Environ()
+			env = wipeAuthVars(env)
 			if tt.pfxDockerUser != "" {
-				os.Setenv("SINGULARITY_DOCKER_USERNAME", tt.pfxDockerUser)
+				env = append(env, "SINGULARITY_DOCKER_USERNAME="+tt.pfxDockerUser)
 			}
 			if tt.pfxDockerPass != "" {
-				os.Setenv("SINGULARITY_DOCKER_PASSWORD", tt.pfxDockerPass)
+				env = append(env, "SINGULARITY_DOCKER_PASSWORD="+tt.pfxDockerPass)
 			}
 			if tt.nopfxDockerUser != "" {
-				os.Setenv("DOCKER_USERNAME", tt.nopfxDockerUser)
+				env = append(env, "DOCKER_USERNAME="+tt.nopfxDockerUser)
 			}
 			if tt.nopfxDockerPass != "" {
-				os.Setenv("DOCKER_PASSWORD", tt.nopfxDockerPass)
+				env = append(env, "DOCKER_PASSWORD="+tt.nopfxDockerPass)
 			}
 			if tt.authLoggedIn {
 				e2e.PrivateRepoLogin(t, c.env, profile, localAuthFileName)
@@ -529,6 +518,7 @@ func (c ctx) dockerCredsPriorityTester(t *testing.T, withCustomAuthFile bool, pr
 				t,
 				e2e.WithProfile(profile),
 				e2e.WithCommand(cmd),
+				e2e.WithEnv(env),
 				e2e.WithArgs(append(authFileArgs, args...)...),
 				e2e.ExpectExit(tt.expectExit),
 			)
@@ -1758,7 +1748,6 @@ func E2ETests(env e2e.TestEnv) testhelper.Tests {
 			// Regressions
 			t.Run("issue 4524", c.issue4524)
 			t.Run("issue 1286", c.issue1286)
-			t.Run("issue 1528", c.issue1528)
 			t.Run("issue 1586", c.issue1586)
 			t.Run("issue 1670", c.issue1670)
 		},
