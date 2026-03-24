@@ -14,7 +14,7 @@ require (
 	github.com/ccoveille/go-safecast/v2 v2.0.0
 	github.com/containerd/containerd/v2 v2.2.2
 	github.com/containerd/go-runc v1.1.0
-	github.com/containerd/platforms v1.0.0-rc.2
+	github.com/containerd/platforms v1.0.0-rc.3
 	github.com/containernetworking/cni v1.3.0
 	github.com/containernetworking/plugins v1.9.1
 	github.com/containers/image/v5 v5.36.2
@@ -23,7 +23,7 @@ require (
 	github.com/docker/cli v29.3.0+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/go-units v0.5.0
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/go-log/log v0.2.0
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-containerregistry v0.21.3
@@ -61,7 +61,7 @@ require (
 	github.com/sylabs/scs-key-client v0.7.9
 	github.com/sylabs/scs-library-client v1.4.14
 	github.com/sylabs/sif/v2 v2.24.0
-	github.com/sylabs/squashfs v1.0.4
+	github.com/sylabs/squashfs v1.0.6
 	github.com/vbauerster/mpb/v8 v8.12.0
 	go.etcd.io/bbolt v1.4.3
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
