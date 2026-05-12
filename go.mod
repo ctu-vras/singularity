@@ -21,7 +21,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/cyphar/filepath-securejoin v0.6.1
 	github.com/distribution/distribution v2.8.3+incompatible
-	github.com/docker/cli v29.4.2+incompatible
+	github.com/docker/cli v29.4.3+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.19.0
@@ -33,7 +33,7 @@ require (
 	github.com/moby/buildkit v0.29.0
 	github.com/moby/go-archive v0.2.0
 	github.com/moby/moby/client v0.4.1
-	github.com/moby/profiles/seccomp v0.2.2
+	github.com/moby/profiles/seccomp v0.2.3
 	github.com/moby/sys/sequential v0.6.0
 	github.com/moby/sys/user v0.4.0
 	github.com/moby/sys/userns v0.1.0
@@ -176,7 +176,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hiddeco/sshsig v0.2.0 // indirect
 	github.com/in-toto/attestation v1.1.2 // indirect
-	github.com/in-toto/in-toto-golang v0.10.0 // indirect
+	github.com/in-toto/in-toto-golang v0.11.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/insomniacslk/dhcp v0.0.0-20250417080101-5f8cf70e8c5f // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7 // indirect
