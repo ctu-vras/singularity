@@ -656,7 +656,17 @@ func (c *container) mountImage(mnt *mount.Point) error {
 	}
 
 	shared := c.engine.EngineConfig.File.SharedLoopDevices
-	number, err := c.rpcOps.LoopDevice(mnt.Source, attachFlag, *info, maxDevices, shared)
+
+	strFd, ok := strings.CutPrefix(mnt.Source, "/proc/self/fd/")
+	if !ok {
+		return fmt.Errorf("mountImage source %s is not a /proc/self/fd/X value", mnt.Source)
+	}
+	fd, err := strconv.ParseUint(strFd, 10, 32)
+	if err != nil {
+		return fmt.Errorf("failed to convert image file descriptor: %v", err)
+	}
+
+	number, err := c.rpcOps.LoopDevice(uintptr(fd), attachFlag, *info, maxDevices, shared)
 	if err != nil {
 		return fmt.Errorf("failed to find loop device: %s", err)
 	}
@@ -2062,9 +2072,8 @@ func (c *container) createCwdDir(system *mount.System) error {
 		} else {
 			path = filepath.Join(path, pathComponent)
 		}
-		_, err := c.session.GetOverridePath(path)
-		existingPath = err == nil
-		if err != nil {
+		existingPath = c.session.HasOverride(path)
+		if !existingPath {
 			pathContainerResolved := fs.EvalRelative(path, c.session.RootFsPath())
 			if pathContainerResolved != path {
 				return nil
@@ -2080,6 +2089,15 @@ func (c *container) createCwdDir(system *mount.System) error {
 
 	if !existingPath && c.session.Layer != nil {
 		if c.engine.EngineConfig.GetSessionLayer() == singularity.UnderlayLayer {
+			layerCwd := filepath.Join(c.session.Layer.Dir(), cwdHost)
+			if cwdHostSymlink && c.session.PathResolvesOutsideOverride(layerCwd, cwdHostResolved) {
+				// Not possible to bind this in underlay mode. Don't attempt to,
+				// because the os.Root-ed bind mount RPC will fail with error.
+				c.skipCwd = true
+				sylog.Infof("Not mounting CWD, symlink resolves outside bind source: %s -> %s", cwdHost, cwdHostResolved)
+				return nil
+			}
+
 			flags := uintptr(syscall.MS_BIND | c.suidFlag | syscall.MS_NODEV | syscall.MS_REC)
 			if err := system.Points.AddBind(mount.CwdTag, cwdHost, cwdHost, flags); err != nil {
 				return fmt.Errorf("could not bind cwd directory %s into container: %s", cwdHost, err)

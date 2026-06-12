@@ -11,8 +11,9 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 
-	"github.com/sylabs/singularity/v4/internal/pkg/util/fs"
+	"github.com/sylabs/singularity/v4/pkg/sylog"
 )
 
 const (
@@ -42,28 +43,76 @@ type symlink struct {
 	target  string
 }
 
-// Manager manages a filesystem layout in a given path
+type dirOverride struct {
+	source            string
+	nestedBindTargets []string
+}
+
+// Manager constructs a container filesystem layout in the session directory.
 type Manager struct {
-	VFS      DefaultVFS
+	// VFS is the virtual filesystem used to create the layout. It is rooted at
+	// the session directory. Note that nested bind targets are created using
+	// an os.Root rooted at the parent of the bind source target.
+	VFS *RootedVFS
+
+	// DirMode and FileMode are the default permissions for directories and
+	// files created by the manager.
 	DirMode  os.FileMode
 	FileMode os.FileMode
+
 	rootPath string
 	entries  map[string]any
 	dirs     []*dir
 
-	// each entries can contain multiple directories, the first
-	// directory of each entry is always substituted to the bound
-	// directory, the others if any are the directories to create
-	// for nested binds support
-	ovDirs map[string][]string
+	// dirOverrides accumulates binds / nested bind information. The key of the map is
+	// the session directory that will be overridden by the bind. The value is a
+	// struct containing the source of the bind and any nested bind targets that
+	// need to be created inside this bind so that additional nested binds have a valid
+	// mount target.
+	//
+	// For example, with `--bind /data:/foo --bind /tmp:/foo/bar` and an overlay
+	// layout the map will contain:
+	//
+	// "/overlay-lowerdir/foo": {
+	//    source: "/data",
+	//    nestedBindTargets: ["/data/bar"],
+	// }, "/overlay-lowerdir/foo/bar": {
+	//    source: "/tmp",
+	//    nestedBindTargets: <nil>,
+	// }
+	//
+	// With an underlay layout the map will contain:
+	//
+	// "/underlay/foo": {
+	//    source: "/data",
+	//    nestedBindTargets: ["/data/bar"],
+	// }, "/underlay/foo/bar": {
+	//    source: "/tmp",
+	//    nestedBindTargets: <nil>,
+	// }
+	//
+	// In both cases, the manager will ensure that /data/bar is created before
+	// the second bind is mounted, so that the nested bind has a valid target to
+	// mount on.
+	dirOverrides map[string]*dirOverride
 }
 
+// NewManager returns a new layout manager with the provided path as its root.
 func NewManager(path string) (*Manager, error) {
-	m := &Manager{VFS: DefaultVFS{}}
-	if err := m.setRootPath(path); err != nil {
+	vfs, err := NewRootedVFS(path)
+	if err != nil {
 		return nil, err
 	}
-	return m, nil
+	root := &dir{mode: dirMode, uid: os.Getuid(), gid: os.Getgid()}
+	return &Manager{
+		VFS:          vfs,
+		DirMode:      dirMode,
+		FileMode:     fileMode,
+		rootPath:     filepath.Clean(path),
+		entries:      map[string]any{"/": root},
+		dirs:         []*dir{root},
+		dirOverrides: map[string]*dirOverride{},
+	}, nil
 }
 
 func (m *Manager) checkPath(path string, checkExist bool) (string, error) {
@@ -86,7 +135,10 @@ func (m *Manager) checkPath(path string, checkExist bool) (string, error) {
 	return p, nil
 }
 
-func (m *Manager) createParentDir(path string) {
+// addDirs adds path and all of its parent directories to the layout if
+// they don't exist. It also tracks nested bind targets for any directories that
+// are overridden for a bind.
+func (m *Manager) addDirs(path string) error {
 	uid := os.Getuid()
 	gid := os.Getgid()
 
@@ -101,43 +153,17 @@ func (m *Manager) createParentDir(path string) {
 				d := &dir{mode: m.DirMode, uid: uid, gid: gid}
 				m.entries[p] = d
 				m.dirs = append(m.dirs, d)
-				// check if the parent directory is part of the overridden
-				// directories to force the creation of the destination
-				// directory in the right parent directory (nested binds)
-				if ovDirs, ok := m.ovDirs[filepath.Dir(p)]; ok {
-					m.overrideDir(p, filepath.Join(ovDirs[0], filepath.Base(p)))
+				// If this directory is under an overridden directory, then ensure
+				// we track the corresponding nested bind target.
+				if layoutPath, target := m.nestedBindTargetFor(p); target != "" {
+					sylog.Debugf("Adding nested bind target %s for overridden directory %s", target, layoutPath)
+					if err := m.addNestedBindTarget(layoutPath, target); err != nil {
+						return err
+					}
 				}
 			}
 		}
 	}
-}
-
-// setRootPath sets layout root path
-func (m *Manager) setRootPath(path string) error {
-	if !fs.IsDir(path) {
-		return fmt.Errorf("%s is not a directory or doesn't exists", path)
-	}
-	m.rootPath = filepath.Clean(path)
-	if m.entries == nil {
-		m.entries = make(map[string]any)
-	} else {
-		return fmt.Errorf("root path is already set")
-	}
-	if m.ovDirs == nil {
-		m.ovDirs = make(map[string][]string)
-	}
-	if m.dirs == nil {
-		m.dirs = make([]*dir, 0)
-	}
-	if m.DirMode == 0o000 {
-		m.DirMode = dirMode
-	}
-	if m.FileMode == 0o000 {
-		m.FileMode = fileMode
-	}
-	d := &dir{mode: m.DirMode, uid: os.Getuid(), gid: os.Getgid()}
-	m.entries["/"] = d
-	m.dirs = append(m.dirs, d)
 	return nil
 }
 
@@ -148,8 +174,7 @@ func (m *Manager) AddDir(path string) error {
 	if err != nil {
 		return err
 	}
-	m.createParentDir(p)
-	return nil
+	return m.addDirs(p)
 }
 
 // AddFile adds a file in layout, will recursively add parent
@@ -159,7 +184,9 @@ func (m *Manager) AddFile(path string, content []byte) error {
 	if err != nil {
 		return err
 	}
-	m.createParentDir(filepath.Dir(p))
+	if err := m.addDirs(filepath.Dir(p)); err != nil {
+		return err
+	}
 	m.entries[p] = &file{mode: m.FileMode, uid: os.Getuid(), gid: os.Getgid(), content: content}
 	return nil
 }
@@ -171,30 +198,204 @@ func (m *Manager) AddSymlink(path string, target string) error {
 	if err != nil {
 		return err
 	}
-	m.createParentDir(filepath.Dir(p))
+	if err := m.addDirs(filepath.Dir(p)); err != nil {
+		return err
+	}
 	m.entries[p] = &symlink{uid: os.Getuid(), gid: os.Getgid(), target: target}
 	return nil
 }
 
-// overrideDir will substitute another directory to the one associated
-// to directory located by path. When called multiple times subsequent
-// path are used to store directories to be created for nested binds.
-func (m *Manager) overrideDir(path string, realpath string) {
-	if slices.Contains(m.ovDirs[path], realpath) {
-		return
+// overrideDir marks layoutPath in the session as being overridden by a bind from realPath.
+func (m *Manager) overrideDir(layoutPath string, realPath string) {
+	if existing, ok := m.dirOverrides[layoutPath]; ok {
+		if existing.source == realPath {
+			return
+		}
+		sylog.Warningf("path %s is already overridden by %s, replacing with %s", layoutPath, existing.source, realPath)
 	}
-	m.ovDirs[path] = append(m.ovDirs[path], realpath)
+	m.dirOverrides[layoutPath] = &dirOverride{source: realPath}
+	sylog.Debugf("Overriding layout directory %s with bind from %s", layoutPath, realPath)
 }
 
-// GetOverridePath returns the real path for the session path
-func (m *Manager) GetOverridePath(path string) (string, error) {
-	if p, ok := m.ovDirs[path]; ok {
-		return p[0], nil
+// addNestedBindTarget adds target as a nested bind target for the overridden directory layoutPath.
+func (m *Manager) addNestedBindTarget(layoutPath string, target string) error {
+	ov, ok := m.dirOverrides[layoutPath]
+	if !ok {
+		return fmt.Errorf("no override has been set for %s", layoutPath)
 	}
-	return "", fmt.Errorf("no override directory %s", path)
+	if slices.Contains(ov.nestedBindTargets, target) {
+		return nil
+	}
+	ov.nestedBindTargets = append(ov.nestedBindTargets, target)
+	sylog.Debugf("Adding nested bind target %s for overridden directory %s", target, layoutPath)
+	return nil
 }
 
-// GetPath returns the full path of layout path
+// nestedBindTargetFor checks whether the layout path p is under an overridden
+// directory. If it is, returns the overridden ancestor's path in the layout and
+// the path in the bind source on which p will be mounted.
+//
+// For example, with `/canary` overridden by a bind from `/host/canary`, p =
+// `/canary/dir2` returns layoutPath = `/canary` and target =
+// `/host/canary/dir2`. Both return values are empty when p is not under any
+// override.
+func (m *Manager) nestedBindTargetFor(p string) (layoutOverride, target string) {
+	layoutOverride, source, rel := m.overrideFor(p)
+	if layoutOverride == "" {
+		return "", ""
+	}
+	return layoutOverride, filepath.Join(source, rel)
+}
+
+// overrideFor finds the nearest ancestor of p that is overridden by a bind. It
+// walks up p's parent directories, until it finds an entry in dirOverrides. If
+// an override is found, it returns the overridden ancestor's path in the layout, the
+// source of the bind that overrides it, and the path of p relative to the
+// overridden ancestor. If p is not under any override, it returns three empty
+// strings.
+func (m *Manager) overrideFor(p string) (layoutOverride, overrideSource, pRel string) {
+	for baseDir := filepath.Dir(p); baseDir != "/"; baseDir = filepath.Dir(baseDir) {
+		ovDir, ok := m.dirOverrides[baseDir]
+		if !ok {
+			continue
+		}
+		rel, err := filepath.Rel(baseDir, p)
+		if err != nil {
+			return "", "", ""
+		}
+		return baseDir, ovDir.source, rel
+	}
+	return "", "", ""
+}
+
+func validateNestedBindTarget(path string, fi os.FileInfo) error {
+	if fi.Mode()&os.ModeSymlink != 0 {
+		// Must accept symlinks to a directory, e.g. for `/home/<user>` which is
+		// symlinked to shared storage location.
+		// Ref: https://github.com/apptainer/singularity/issues/4836
+		resolved, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return fmt.Errorf("failed to resolve nested bind target %s: %s", path, err)
+		}
+		fi, err = os.Stat(resolved)
+		if err != nil {
+			return fmt.Errorf("failed to stat resolved nested bind target %s: %s", resolved, err)
+		}
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("nested bind target %s exists but is not a directory", path)
+	}
+	return nil
+}
+
+// ensureNestedBindTarget ensures that the nested bind target directory exists,
+// creating it where necessary, using os.Root on the parent directory to avoid
+// escaping the parent bind.
+func ensureNestedBindTarget(path string, mode os.FileMode) error {
+	dir, base := filepath.Dir(path), filepath.Base(path)
+	parent, err := os.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	defer parent.Close()
+
+	// If override path exists, it must be a directory.
+	fi, err := parent.Lstat(base)
+	if err == nil {
+		return validateNestedBindTarget(path, fi)
+	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat %s: %s", path, err)
+	}
+
+	// If nested bind target doesn't exist, create it. We must accommodate another
+	// process creating the same location, where singularity has been launched
+	// in parallel with the same bind configuration.
+	sylog.Infof("Creating empty target directory for nested bind at %s", path)
+	if err := parent.Mkdir(base, mode&0o777); err != nil {
+		if !os.IsExist(err) {
+			return fmt.Errorf("failed to create %s directory: %s", path, err)
+		}
+		fi, err := parent.Lstat(base)
+		if err != nil {
+			return fmt.Errorf("failed to stat %s after concurrent creation: %s", path, err)
+		}
+		return validateNestedBindTarget(path, fi)
+	}
+
+	// Check for / apply high mode bits (sticky/setuid/setgid) that Mkdir does not honor.
+	if mode&0o777 == mode {
+		return nil
+	}
+	f, err := parent.OpenFile(base, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return fmt.Errorf("failed to open %s directory: %s", path, err)
+	}
+	defer f.Close()
+	if err := f.Chmod(mode); err != nil {
+		return fmt.Errorf("failed to set mode on %s directory: %s", path, err)
+	}
+	return nil
+}
+
+// diskPath returns the absolute path where p will be materialized on disk:
+// inside the session root, or inside the bind source if p falls under an
+// overridden directory. Used for diagnostic messages.
+func (m *Manager) diskPath(p string) string {
+	if _, source, rel := m.overrideFor(p); source != "" {
+		return filepath.Join(source, rel)
+	}
+	return filepath.Join(m.rootPath, p)
+}
+
+// vfsFor returns an appropriately rooted VFS for operations on p. If p is not
+// within an override directory, the session-rooted VFS is returned. If p is
+// within an override directory, a new RootedVFS rooted at the bind source is
+// returned.
+func (m *Manager) vfsFor(p string) (*RootedVFS, string, error) {
+	layoutPath, source, rel := m.overrideFor(p)
+	if layoutPath == "" {
+		rel := strings.TrimPrefix(filepath.Clean(p), string(os.PathSeparator))
+		if rel == "" {
+			rel = "."
+		}
+		return m.VFS, rel, nil
+	}
+	v, err := NewRootedVFS(source)
+	if err != nil {
+		return nil, "", err
+	}
+	return v, rel, nil
+}
+
+// HasOverride returns true if the provided layout path is overridden by a bind, false otherwise.
+func (m *Manager) HasOverride(layoutPath string) bool {
+	_, ok := m.dirOverrides[layoutPath]
+	return ok
+}
+
+// PathResolvesOutsideOverride reports whether resolvedPath falls outside the
+// deepest bind source that overrides path. This catches symlinked paths that
+// look like they are below a bind in the container layout, but resolve to a
+// different host tree that cannot be reached through that bind target.
+func (m *Manager) PathResolvesOutsideOverride(path, resolvedPath string) bool {
+	_, source, _ := m.overrideFor(path)
+	if source == "" {
+		return false
+	}
+
+	resolvedSource, err := filepath.EvalSymlinks(source)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(resolvedSource, resolvedPath)
+	if err != nil {
+		return false
+	}
+	return rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
+
+// GetPath returns the full host path, for path in the layout.
 func (m *Manager) GetPath(path string) (string, error) {
 	_, err := m.checkPath(path, false)
 	if err != nil {
@@ -250,6 +451,8 @@ func (m *Manager) Update() error {
 	return m.sync()
 }
 
+// sync materializes the layout in the session directory. Directories (including
+// nested bind targets) are created first, followed by files and symlinks.
 func (m *Manager) sync() error {
 	uid := os.Getuid()
 	gid := os.Getgid()
@@ -258,8 +461,8 @@ func (m *Manager) sync() error {
 		return fmt.Errorf("root path is not set")
 	}
 
-	oldmask := m.VFS.Umask(0)
-	defer m.VFS.Umask(oldmask)
+	oldmask := syscall.Umask(0)
+	defer syscall.Umask(oldmask)
 
 	for _, d := range m.dirs[1:] {
 		if d.created {
@@ -268,11 +471,11 @@ func (m *Manager) sync() error {
 		path := ""
 		for p, e := range m.entries {
 			if e == d {
-				path = m.rootPath + p
-				for _, ovDir := range m.ovDirs[p] {
-					if _, err := m.VFS.Stat(ovDir); err != nil {
-						if err := m.VFS.Mkdir(ovDir, m.DirMode); err != nil {
-							return fmt.Errorf("failed to create %s directory: %s", ovDir, err)
+				path = p
+				if ovDir, ok := m.dirOverrides[p]; ok {
+					for _, nbt := range ovDir.nestedBindTargets {
+						if err := ensureNestedBindTarget(nbt, m.DirMode); err != nil {
+							return err
 						}
 					}
 				}
@@ -282,83 +485,103 @@ func (m *Manager) sync() error {
 		if path == "" {
 			continue
 		}
+		// Directories are always created in the session, even when path is
+		// under an overridden directory: they may serve as bind-mount targets
+		// for other mount points (e.g. the home staging dir). Override targets
+		// outside the session are handled separately by ensureNestedBindTarget.
+		fullPath := filepath.Join(m.rootPath, path)
+		name := strings.TrimPrefix(filepath.Clean(path), string(os.PathSeparator))
+		mode := m.DirMode
 		if d.mode != m.DirMode {
-			if err := m.VFS.Mkdir(path, d.mode); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("failed to create %s directory: %s", path, err)
-				}
-				// skip owner change, not created by us
-				d.created = true
-				continue
+			mode = d.mode
+		}
+		if err := m.VFS.Mkdir(name, mode); err != nil {
+			if !os.IsExist(err) {
+				return fmt.Errorf("failed to create %s directory: %s", fullPath, err)
 			}
-		} else {
-			if err := m.VFS.Mkdir(path, m.DirMode); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("failed to create %s directory: %s", path, err)
-				}
-				// skip owner change, not created by us
-				d.created = true
-				continue
-			}
+			// skip owner change, not created by us
+			d.created = true
+			continue
 		}
 		if d.uid != uid || d.gid != gid {
-			if err := m.VFS.Chown(path, d.uid, d.gid); err != nil {
-				return fmt.Errorf("failed to change owner of %s: %s", path, err)
+			if err := m.VFS.Chown(name, d.uid, d.gid); err != nil {
+				return fmt.Errorf("failed to change owner of %s: %s", fullPath, err)
 			}
 		}
 		d.created = true
 	}
 
 	for p, e := range m.entries {
-		path := m.rootPath + p
-		if ovDir, err := m.GetOverridePath(filepath.Dir(p)); err == nil {
-			path = filepath.Join(ovDir, filepath.Base(p))
+		if err := m.syncEntry(p, e, uid, gid); err != nil {
+			return err
 		}
-		switch entry := e.(type) {
-		case *file:
-			if entry.created {
-				continue
-			}
-			if err := m.VFS.WriteFile(path, entry.content, entry.mode); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("failed to create file %s: %s", path, err)
-				}
-				// skip content write or owner change, not created by us
-				entry.created = true
-				continue
-			}
-			if entry.uid != uid || entry.gid != gid {
-				if err := m.VFS.Chown(path, entry.uid, entry.gid); err != nil {
-					return fmt.Errorf("failed to change %s ownership: %s", path, err)
-				}
-			}
-			entry.created = true
-		case *symlink:
-			if entry.created {
-				continue
-			}
-			if err := m.VFS.Symlink(entry.target, path); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("failed to create symlink %s: %s", path, err)
-				}
-				// check that current symlink point to the right target if it's a symlink
-				// otherwise we consider the entry as already created no matter if it's a
-				// file, a directory or something else
-				target, err := m.VFS.Readlink(path)
-				if err == nil && target != entry.target {
-					return fmt.Errorf("symlink %s point to %s instead of %s", path, target, entry.target)
-				}
-				// skip symlink owner change, not created by us
-				entry.created = true
-				continue
-			}
-			if entry.uid != uid || entry.gid != gid {
-				if err := m.VFS.Lchown(path, entry.uid, entry.gid); err != nil {
-					return fmt.Errorf("failed to change %s ownership: %s", path, err)
-				}
-			}
-			entry.created = true
+	}
+	return nil
+}
+
+// syncEntry materializes a single file or symlink entry. It opens the
+// appropriate VFS for p (session-rooted, or freshly rooted at the override
+// target) and closes the override VFS, if any, before returning so per-entry
+// fds don't accumulate across the whole sync.
+func (m *Manager) syncEntry(p string, e any, uid, gid int) error {
+	switch entry := e.(type) {
+	case *file:
+		if entry.created {
+			return nil
 		}
+		ops, name, err := m.vfsFor(p)
+		if err != nil {
+			return err
+		}
+		if ops != m.VFS {
+			defer ops.Close()
+		}
+		if err := ops.WriteFile(name, entry.content, entry.mode); err != nil {
+			if !os.IsExist(err) {
+				return fmt.Errorf("failed to create file %s: %s", m.diskPath(p), err)
+			}
+			// skip content write or owner change, not created by us
+			entry.created = true
+			return nil
+		}
+		if entry.uid != uid || entry.gid != gid {
+			if err := ops.Chown(name, entry.uid, entry.gid); err != nil {
+				return fmt.Errorf("failed to change %s ownership: %s", m.diskPath(p), err)
+			}
+		}
+		entry.created = true
+	case *symlink:
+		if entry.created {
+			return nil
+		}
+		ops, name, err := m.vfsFor(p)
+		if err != nil {
+			return err
+		}
+		if ops != m.VFS {
+			defer ops.Close()
+		}
+		if err := ops.Symlink(entry.target, name); err != nil {
+			if !os.IsExist(err) {
+				return fmt.Errorf("failed to create symlink %s: %s", m.diskPath(p), err)
+			}
+			// check that current symlink point to the right target if it's a symlink
+			// otherwise we consider the entry as already created no matter if it's a
+			// file, a directory or something else
+			target, err := ops.Readlink(name)
+			if err == nil && target != entry.target {
+				return fmt.Errorf("symlink %s point to %s instead of %s", m.diskPath(p), target, entry.target)
+			}
+			// skip symlink owner change, not created by us
+			entry.created = true
+			return nil
+		}
+		if entry.uid != uid || entry.gid != gid {
+			if err := ops.Lchown(name, entry.uid, entry.gid); err != nil {
+				return fmt.Errorf("failed to change %s ownership: %s", m.diskPath(p), err)
+			}
+		}
+		entry.created = true
 	}
 	return nil
 }
