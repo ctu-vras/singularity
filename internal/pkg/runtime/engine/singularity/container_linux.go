@@ -102,6 +102,8 @@ func create(ctx context.Context, engine *EngineOperations, rpcOps *client.RPC, p
 		return fmt.Errorf("no root filesystem image provided")
 	}
 
+	inUserNS, _ := namespaces.IsInsideUserNamespace(os.Getpid())
+
 	configurationFile := buildcfg.SINGULARITY_CONF_FILE
 	if buildcfg.SINGULARITY_SUID_INSTALL == 0 || os.Geteuid() == 0 {
 		configFile := engine.EngineConfig.GetConfigurationFile()
@@ -110,7 +112,17 @@ func create(ctx context.Context, engine *EngineOperations, rpcOps *client.RPC, p
 		}
 	}
 
-	engine.EngineConfig.File, err = singularityconf.Parse(configurationFile)
+	if inUserNS {
+		engine.EngineConfig.File, err = singularityconf.Parse(configurationFile)
+	} else {
+		var file *os.File
+		file, err = fs.OpenTrustedFile(configurationFile, 0)
+		if err != nil {
+			return fmt.Errorf("%s must be owned by root: %s", configurationFile, err)
+		}
+		defer file.Close()
+		engine.EngineConfig.File, err = singularityconf.ParseFile(file)
+	}
 	if err != nil {
 		return fmt.Errorf("unable to parse singularity.conf file: %s", err)
 	}
@@ -165,12 +177,10 @@ func create(ctx context.Context, engine *EngineOperations, rpcOps *client.RPC, p
 		c.suidFlag = 0
 	}
 
-	// user namespace was not requested but we need to check
-	// if we are currently running in a user namespace and set
-	// value accordingly to avoid remount errors while running
-	// inside a user namespace
+	// user namespace was not requested but if we are still currently running in
+	// a user namespace then set value accordingly to avoid remount errors.
 	if !c.userNS {
-		c.userNS, _ = namespaces.IsInsideUserNamespace(os.Getpid())
+		c.userNS = inUserNS
 	}
 
 	p := &mount.Points{}
@@ -1596,8 +1606,9 @@ func (c *container) addHomeStagingDir(system *mount.System, source string, dest 
 				return "", fmt.Errorf("can't determine absolute path of workdir %s: %s", workdir, err)
 			}
 
-			homeStage = filepath.Join(workdir, "home")
-			if err := fs.Mkdir(homeStage, 0o700); err != nil && !os.IsExist(err) {
+			homeStageRel := "home"
+			homeStage = filepath.Join(workdir, homeStageRel)
+			if err := fs.MkdirAt(workdir, homeStageRel, 0o700); err != nil && !os.IsExist(err) {
 				return "", fmt.Errorf("failed to create %s: %s", homeStage, err)
 			}
 		} else {
@@ -1801,13 +1812,15 @@ func (c *container) createTmpSource() (tmpSource, vartmpSource string, err error
 				return "", "", fmt.Errorf("can't determine absolute path of workdir %s: %s", workdir, err)
 			}
 
-			tmpSource = filepath.Join(workdir, tmpSource)
-			vartmpSource = filepath.Join(workdir, vartmpSource)
+			tmpSourceRel := strings.TrimPrefix(filepath.Clean(tmpSource), string(os.PathSeparator))
+			vartmpSourceRel := filepath.Clean(vartmpSource)
+			tmpSource = filepath.Join(workdir, tmpSourceRel)
+			vartmpSource = filepath.Join(workdir, vartmpSourceRel)
 
-			if err := fs.Mkdir(tmpSource, os.ModeSticky|0o777); err != nil && !os.IsExist(err) {
+			if err := fs.MkdirAt(workdir, tmpSourceRel, os.ModeSticky|0o777); err != nil && !os.IsExist(err) {
 				return "", "", fmt.Errorf("failed to create %s: %s", tmpSource, err)
 			}
-			if err := fs.Mkdir(vartmpSource, os.ModeSticky|0o777); err != nil && !os.IsExist(err) {
+			if err := fs.MkdirAt(workdir, vartmpSourceRel, os.ModeSticky|0o777); err != nil && !os.IsExist(err) {
 				return "", "", fmt.Errorf("failed to create %s: %s", vartmpSource, err)
 			}
 		} else {
@@ -1893,8 +1906,9 @@ func (c *container) addScratchMount(system *mount.System) error {
 		if err != nil {
 			return fmt.Errorf("can't determine absolute path of workdir %s: %s", workdir, err)
 		}
-		sourceDir := filepath.Join(workdir, scratchSessionDir)
-		if err := fs.MkdirAll(sourceDir, 0o750); err != nil {
+		scratchSessionRel := strings.TrimPrefix(filepath.Clean(scratchSessionDir), string(os.PathSeparator))
+		sourceDir := filepath.Join(workdir, scratchSessionRel)
+		if err := fs.MkdirAllAt(workdir, scratchSessionRel, 0o750); err != nil {
 			return fmt.Errorf("could not create scratch working directory %s: %s", sourceDir, err)
 		}
 	}
@@ -1906,8 +1920,12 @@ func (c *container) addScratchMount(system *mount.System) error {
 		}
 		fullSourceDir, _ := c.session.GetPath(src)
 		if hasWorkdir {
-			fullSourceDir = filepath.Join(workdir, scratchSessionDir, dir)
-			if err := fs.MkdirAll(fullSourceDir, 0o750); err != nil {
+			scratchDirRel := filepath.Join(
+				strings.TrimPrefix(filepath.Clean(scratchSessionDir), string(os.PathSeparator)),
+				strings.TrimPrefix(filepath.Clean(dir), string(os.PathSeparator)),
+			)
+			fullSourceDir = filepath.Join(workdir, scratchDirRel)
+			if err := fs.MkdirAllAt(workdir, scratchDirRel, 0o750); err != nil {
 				return fmt.Errorf("could not create scratch working directory %s: %s", fullSourceDir, err)
 			}
 		}
