@@ -12,7 +12,7 @@ require (
 	github.com/buger/goterm v1.0.4
 	github.com/buger/jsonparser v1.2.0
 	github.com/ccoveille/go-safecast/v2 v2.0.1
-	github.com/containerd/containerd/v2 v2.2.4
+	github.com/containerd/containerd/v2 v2.2.5
 	github.com/containerd/go-runc v1.1.0
 	github.com/containerd/platforms v1.0.0-rc.4
 	github.com/containernetworking/cni v1.3.0
@@ -21,7 +21,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/distribution/distribution v2.8.3+incompatible
-	github.com/docker/cli v29.5.3+incompatible
+	github.com/docker/cli v29.6.0+incompatible
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.19.0
@@ -33,7 +33,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/moby/buildkit v0.31.0
 	github.com/moby/go-archive v0.2.0
-	github.com/moby/moby/client v0.4.1
+	github.com/moby/moby/client v0.5.0
 	github.com/moby/profiles/seccomp v0.2.3
 	github.com/moby/sys/user v0.4.0
 	github.com/moby/sys/userns v0.1.0
@@ -60,7 +60,7 @@ require (
 	github.com/sylabs/oci-tools v0.20.0
 	github.com/sylabs/scs-build-client v0.9.20
 	github.com/sylabs/scs-key-client v0.7.9
-	github.com/sylabs/scs-library-client v1.4.14
+	github.com/sylabs/scs-library-client v1.4.15
 	github.com/sylabs/sif/v2 v2.24.1
 	github.com/sylabs/squashfs v1.0.6
 	github.com/tonistiigi/fsutil v0.0.0-20260609091201-0257b3308df4
@@ -192,7 +192,7 @@ require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/moby/api v1.54.2 // indirect
+	github.com/moby/moby/api v1.55.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/policy-helpers v0.0.0-20260612073044-d5411a945cfc // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
