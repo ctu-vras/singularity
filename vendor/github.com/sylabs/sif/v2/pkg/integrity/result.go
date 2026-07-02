@@ -1,0 +1,53 @@
+// Copyright (c) 2020-2022, Sylabs Inc. All rights reserved.
+// This software is licensed under a 3-clause BSD license. Please consult the LICENSE.md file
+// distributed with the sources of this project regarding your rights to use or distribute this
+// software.
+
+package integrity
+
+import (
+	"crypto"
+
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/secure-systems-lab/go-securesystemslib/dsse"
+	"github.com/sylabs/sif/v2/pkg/sif"
+)
+
+// VerifyResult describes the results of an individual signature validation.
+type VerifyResult struct {
+	sig      sif.Descriptor
+	verified []sif.Descriptor
+	aks      []dsse.AcceptedKey
+	e        *openpgp.Entity
+	err      error
+}
+
+// Signature returns the signature object associated with the result.
+func (r VerifyResult) Signature() sif.Descriptor {
+	return r.sig
+}
+
+// Verified returns the data objects that were verified.
+func (r VerifyResult) Verified() []sif.Descriptor {
+	return r.verified
+}
+
+// Keys returns the public key(s) used to verify the signature.
+func (r VerifyResult) Keys() []crypto.PublicKey {
+	keys := make([]crypto.PublicKey, 0, len(r.aks))
+	for _, ak := range r.aks {
+		keys = append(keys, ak.Public)
+	}
+	return keys
+}
+
+// Entity returns the signing entity, or nil if the signing entity could not be determined.
+func (r VerifyResult) Entity() *openpgp.Entity {
+	return r.e
+}
+
+// Error returns an error describing the reason verification failed, or nil if verification was
+// successful.
+func (r VerifyResult) Error() error {
+	return r.err
+}

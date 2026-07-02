@@ -116,3 +116,4 @@ debian/tmp/
 debian/control
 
 .LICENSE_DEPENDENCIES.csv
+!third_party/**
