@@ -6,7 +6,7 @@ Uploaders:
   Sylabs Community Packaging <community@sylabs.io>
 Build-Depends:
  cryptsetup,
- debhelper-compat(=10),
+ debhelper-compat(=13),
  devscripts,
  dh-golang,
  dh-make,
