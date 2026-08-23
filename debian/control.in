@@ -7,7 +7,6 @@ Uploaders:
 Build-Depends:
  autoconf,
  cryptsetup,
- debhelper-compat(=13),
  devscripts,
  dh-apparmor,
  dh-golang,
