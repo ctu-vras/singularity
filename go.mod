@@ -38,7 +38,7 @@ require (
 	github.com/moby/sys/user v0.4.1
 	github.com/moby/sys/userns v0.2.0
 	github.com/moby/term v0.5.2
-	github.com/opencontainers/cgroups v0.0.8
+	github.com/opencontainers/cgroups v0.1.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runc v1.5.1
 	github.com/opencontainers/runtime-spec v1.3.0
@@ -52,7 +52,7 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	github.com/sigstore/cosign/v2 v2.6.5
 	github.com/sigstore/sigstore v1.10.9
-	github.com/sirupsen/logrus v1.10.0
+	github.com/sirupsen/logrus v1.10.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
@@ -72,7 +72,7 @@ require (
 	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.41.0
-	google.golang.org/grpc v1.83.0
+	google.golang.org/grpc v1.83.1
 	mvdan.cc/sh/v3 v3.13.1
 	tags.cncf.io/container-device-interface v1.1.0
 	tags.cncf.io/container-device-interface/specs-go v1.1.0
