@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
-	github.com/ProtonMail/go-crypto v1.4.1
+	github.com/ProtonMail/go-crypto v1.5.0
 	github.com/adigunhammedolalekan/registry-auth v0.0.0-20200730122110-8cde180a3a60
 	github.com/apex/log v1.9.0
 	github.com/astromechza/etcpwdparse v0.0.0-20170319193008-f0e5f0779716
@@ -51,17 +51,17 @@ require (
 	github.com/seccomp/libseccomp-golang v0.12.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/sigstore/cosign/v2 v2.6.5
-	github.com/sigstore/sigstore v1.10.9
+	github.com/sigstore/sigstore v1.10.11
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
 	github.com/sylabs/json-resp v0.9.5
-	github.com/sylabs/oci-tools v0.20.1
+	github.com/sylabs/oci-tools v0.20.2
 	github.com/sylabs/scs-build-client v0.9.22
 	github.com/sylabs/scs-key-client v0.7.9
 	github.com/sylabs/scs-library-client v1.4.16
-	github.com/sylabs/sif/v2 v2.24.1
+	github.com/sylabs/sif/v2 v2.24.2
 	github.com/sylabs/squashfs v1.0.6
 	github.com/tonistiigi/fsutil v0.0.0-20260819142231-83cac42c1c52
 	github.com/vbauerster/mpb/v8 v8.16.1
@@ -72,7 +72,7 @@ require (
 	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.46.0
 	golang.org/x/text v0.42.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 	mvdan.cc/sh/v3 v3.14.1
 	tags.cncf.io/container-device-interface v1.1.0
 	tags.cncf.io/container-device-interface/specs-go v1.1.0
@@ -219,10 +219,10 @@ require (
 	github.com/safchain/ethtool v0.6.2 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	github.com/sassoftware/relic v7.2.1+incompatible // indirect
-	github.com/secure-systems-lab/go-securesystemslib v0.11.0 // indirect
+	github.com/secure-systems-lab/go-securesystemslib v0.11.1 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
-	github.com/sigstore/protobuf-specs v0.5.1 // indirect
+	github.com/sigstore/protobuf-specs v0.5.2 // indirect
 	github.com/sigstore/rekor v1.5.3 // indirect
 	github.com/sigstore/rekor-tiles/v2 v2.3.0 // indirect
 	github.com/sigstore/sigstore-go v1.2.2 // indirect
