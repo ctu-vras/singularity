@@ -28,6 +28,7 @@ import (
 	"unsafe"
 
 	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/sylabs/singularity/v4/internal/pkg/hooks"
 	"github.com/sylabs/singularity/v4/internal/pkg/instance"
 	"github.com/sylabs/singularity/v4/internal/pkg/plugin"
 	"github.com/sylabs/singularity/v4/internal/pkg/security"
@@ -40,6 +41,7 @@ import (
 	singularitycallback "github.com/sylabs/singularity/v4/pkg/plugin/callback/runtime/engine/singularity"
 	singularityConfig "github.com/sylabs/singularity/v4/pkg/runtime/engine/singularity/config"
 	"github.com/sylabs/singularity/v4/pkg/sylog"
+	"github.com/sylabs/singularity/v4/pkg/util/namespaces"
 	"github.com/sylabs/singularity/v4/pkg/util/rlimit"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -178,6 +180,7 @@ func (e *EngineOperations) StartProcess(masterConn net.Conn) error {
 			}
 		}
 
+		sylog.Debugf("Calling exec of %s", args[0])
 		return e.execProcess(args, env)
 	}
 
@@ -315,16 +318,14 @@ func (e *EngineOperations) StartProcess(masterConn net.Conn) error {
 	}
 }
 
-// PostStartProcess is called from master after successful
-// execution of the container process. It will write instance
-// state/config files (if any).
+// PostStartProcess is called from master after successful execution of the
+// container process. It will execute plugin callbacks, hooks, and write
+// instance state/config files (if any).
 //
-// Additional privileges may be gained when running
-// in suid flow. However, when a user namespace is requested and it is not
-// a hybrid workflow (e.g. fakeroot), then there is no privileged saved uid
-// and thus no additional privileges can be gained.
-//
-// Here, however, singularity engine does not escalate privileges.
+// Additional privileges may be gained when running in suid flow. However, when
+// a user namespace is requested and it is not a hybrid workflow (e.g.
+// fakeroot), then there is no privileged saved uid and thus no additional
+// privileges can be gained.
 func (e *EngineOperations) PostStartProcess(_ context.Context, pid int) error {
 	sylog.Debugf("Post start process")
 
@@ -340,95 +341,124 @@ func (e *EngineOperations) PostStartProcess(_ context.Context, pid int) error {
 		}
 	}
 
+	// Native Hooks - may escalate privilege in hook execution
+	inUserNS, _ := namespaces.IsInsideUserNamespace(os.Getpid())
+	allowPrivileged := !inUserNS
+	hs, err := hooks.LoadNativeHooks(allowPrivileged)
+	if err != nil {
+		return fmt.Errorf("failed to load poststart hooks: %v", err)
+	}
+	for _, h := range hs {
+		if err := h.Run(e.ociState(pid), allowPrivileged); err != nil {
+			sylog.Errorf("Hook %q failed: %s", h.Name, err)
+		}
+	}
+
+	// Create instance state/config file - no privilege escalation
 	if e.EngineConfig.GetInstance() {
-		name := e.CommonConfig.ContainerID
+		return e.registerInstance(pid)
+	}
 
-		if err := os.Chdir("/"); err != nil {
-			return fmt.Errorf("failed to change directory to /: %s", err)
-		}
+	return nil
+}
 
-		file, err := instance.Add(name, instance.SingSubDir)
-		if err != nil {
-			return err
-		}
+func (e *EngineOperations) ociState(pid int) specs.State {
+	return specs.State{
+		Version: specs.Version,
+		ID:      e.CommonConfig.ContainerID,
+		Status:  specs.StateRunning,
+		Pid:     pid,
+		Bundle:  e.EngineConfig.GetImage(),
+	}
+}
 
-		pw, err := user.CurrentOriginal()
-		if err != nil {
-			return err
-		}
+func (e *EngineOperations) registerInstance(pid int) error {
+	name := e.CommonConfig.ContainerID
 
-		logErrPath, logOutPath, err := instance.GetLogFilePaths(name, instance.LogSubDir)
-		if err != nil {
-			return fmt.Errorf("could not find log paths: %s", err)
-		}
+	if err := os.Chdir("/"); err != nil {
+		return fmt.Errorf("failed to change directory to /: %s", err)
+	}
 
-		file.User = pw.Name
-		file.Pid = pid
-		file.PPid = os.Getpid()
-		file.Image = e.EngineConfig.GetImage()
-		file.LogErrPath = logErrPath
-		file.LogOutPath = logOutPath
-
-		ip, err := e.getIP()
-		if err != nil {
-			sylog.Warningf("Could not get ip for %s: %s", pw.Name, err)
-		}
-		file.IP = ip
-
-		// by default we add all namespaces except the user namespace which
-		// is added conditionally. This delegates checks to the C starter code
-		// which will determine if a namespace needs to be joined by
-		// comparing namespace inodes
-		path := fmt.Sprintf("/proc/%d/ns", pid)
-		namespaces := []struct {
-			nstype string
-			ns     specs.LinuxNamespaceType
-		}{
-			{"pid", specs.PIDNamespace},
-			{"uts", specs.UTSNamespace},
-			{"ipc", specs.IPCNamespace},
-			{"mnt", specs.MountNamespace},
-			{"cgroup", specs.CgroupNamespace},
-			{"net", specs.NetworkNamespace},
-		}
-		for _, n := range namespaces {
-			nspath := filepath.Join(path, n.nstype)
-			e.EngineConfig.OciConfig.AddOrReplaceLinuxNamespace(n.ns, nspath)
-		}
-		for _, ns := range e.EngineConfig.OciConfig.Linux.Namespaces {
-			if ns.Type == specs.UserNamespace {
-				nspath := filepath.Join(path, "user")
-				e.EngineConfig.OciConfig.AddOrReplaceLinuxNamespace(specs.UserNamespace, nspath)
-				file.UserNs = true
-				break
-			}
-		}
-
-		// If we are using cgroups with this instance then mark that in the instance config.
-		// We don't store the path, as we will get the cgroup manager by Pid.
-		if e.EngineConfig.GetCgroupsJSON() != "" {
-			file.Cgroup = true
-		}
-
-		// grab configuration to store in instance file
-		file.Config, err = json.Marshal(e.CommonConfig)
-		if err != nil {
-			return err
-		}
-
-		err = file.Update()
-
-		// send SIGUSR1 to the parent process in order to tell it
-		// to detach container process and run as instance.
-		// Sleep a bit in case child would exit
-		time.Sleep(100 * time.Millisecond)
-		if err := syscall.Kill(os.Getppid(), syscall.SIGUSR1); err != nil {
-			return err
-		}
-
+	file, err := instance.Add(name, instance.SingSubDir)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	pw, err := user.CurrentOriginal()
+	if err != nil {
+		return err
+	}
+
+	logErrPath, logOutPath, err := instance.GetLogFilePaths(name, instance.LogSubDir)
+	if err != nil {
+		return fmt.Errorf("could not find log paths: %s", err)
+	}
+
+	file.User = pw.Name
+	file.Pid = pid
+	file.PPid = os.Getpid()
+	file.Image = e.EngineConfig.GetImage()
+	file.LogErrPath = logErrPath
+	file.LogOutPath = logOutPath
+
+	ip, err := e.getIP()
+	if err != nil {
+		sylog.Warningf("Could not get ip for %s: %s", pw.Name, err)
+	}
+	file.IP = ip
+
+	// by default we add all namespaces except the user namespace which
+	// is added conditionally. This delegates checks to the C starter code
+	// which will determine if a namespace needs to be joined by
+	// comparing namespace inodes
+	path := fmt.Sprintf("/proc/%d/ns", pid)
+	namespaces := []struct {
+		nstype string
+		ns     specs.LinuxNamespaceType
+	}{
+		{"pid", specs.PIDNamespace},
+		{"uts", specs.UTSNamespace},
+		{"ipc", specs.IPCNamespace},
+		{"mnt", specs.MountNamespace},
+		{"cgroup", specs.CgroupNamespace},
+		{"net", specs.NetworkNamespace},
+	}
+	for _, n := range namespaces {
+		nspath := filepath.Join(path, n.nstype)
+		e.EngineConfig.OciConfig.AddOrReplaceLinuxNamespace(n.ns, nspath)
+	}
+	for _, ns := range e.EngineConfig.OciConfig.Linux.Namespaces {
+		if ns.Type == specs.UserNamespace {
+			nspath := filepath.Join(path, "user")
+			e.EngineConfig.OciConfig.AddOrReplaceLinuxNamespace(specs.UserNamespace, nspath)
+			file.UserNs = true
+			break
+		}
+	}
+
+	// If we are using cgroups with this instance then mark that in the instance config.
+	// We don't store the path, as we will get the cgroup manager by Pid.
+	if e.EngineConfig.GetCgroupsJSON() != "" {
+		file.Cgroup = true
+	}
+
+	// grab configuration to store in instance file
+	file.Config, err = json.Marshal(e.CommonConfig)
+	if err != nil {
+		return err
+	}
+
+	err = file.Update()
+
+	// send SIGUSR1 to the parent process in order to tell it
+	// to detach container process and run as instance.
+	// Sleep a bit in case child would exit
+	time.Sleep(100 * time.Millisecond)
+	if err := syscall.Kill(os.Getppid(), syscall.SIGUSR1); err != nil {
+		return err
+	}
+
+	return err
 }
 
 func (e *EngineOperations) setPathEnv() {
@@ -605,15 +635,28 @@ func getExecError(err error, args []string, shell string) error {
 }
 
 func (e *EngineOperations) execProcess(args, env []string) error {
-	err := syscall.Exec(args[0], args, env)
-	if err == nil {
-		return nil
+	// Retry up to n times if this fails with an EINTR
+	const maxRetries = 10
+	for i := 0; i < maxRetries; i++ {
+		// Exec container process
+		err := syscall.Exec(args[0], args, env)
+		if err == nil {
+			return nil
+		}
+		// If args[0] not executable then try with shell
+		if err == syscall.ENOEXEC && args[0] != defaultShell {
+			args = append([]string{defaultShell}, args...)
+			return e.execProcess(args, env)
+		}
+		// If received an EINTR try again up to maxRetries
+		if err == syscall.EINTR {
+			sylog.Debugf("exec %s failed with EINTR, retrying", args[0])
+			continue
+		}
+		// Any other error is fatal
+		return getExecError(err, args, e.EngineConfig.GetShell())
 	}
-	if err == syscall.ENOEXEC && args[0] != defaultShell {
-		args = append([]string{defaultShell}, args...)
-		return e.execProcess(args, env)
-	}
-	return getExecError(err, args, e.EngineConfig.GetShell())
+	return fmt.Errorf("exec failed with EINTR too many times, check for memory exhaustion")
 }
 
 // bufferCloser wraps a bytes.Buffer with a Close method
