@@ -130,3 +130,4 @@ __debug_bin
 
 ci-cache-checksum.txt
 
+!third_party/**
