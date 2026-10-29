@@ -35,4 +35,7 @@ done
 
 GOPATH="$ROOT_DIR"/go-deps go mod vendor && git add vendor && chmod -R ug+w go-deps && rm -rf go-deps
 
+[ -d log-plugin ] && (cd log-plugin && ln -s ../vendor && git add vendor)
+[ -d enterprise-plugin ] && (cd enterprise-plugin && ln -s ../vendor && git add vendor)
+
 popd
