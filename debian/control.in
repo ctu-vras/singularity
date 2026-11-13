@@ -1,3 +1,6 @@
+# debian/prepare.sh generates debian/control from this file, substituting
+# @golang_version@. Add / update binary package stanzas here, not in
+# debian/control, or they will be lost when the package is prepared.
 Source: singularity-ce
 Section: admin
 Priority: optional
@@ -14,8 +17,7 @@ Build-Depends:
  git,
  golang-@golang_version@-go,
  libdistro-info-perl,
- libfuse-dev,
- libglib2.0-dev,
+ libfuse3-dev,
  libseccomp-dev,
  libtool,
  pkg-config,
@@ -35,9 +37,8 @@ Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends},
   crun (>= 1.5.0) | runc,
   cryptsetup-bin,
-  fuse,
+  fuse3,
   fuse2fs,
-  libglib2.0-0,
   libseccomp2,
   squashfs-tools,
   uidmap
@@ -55,3 +56,15 @@ Conflicts:
 Recommends: squashfs-tools-ng
 Description: SingularityCE is the Community Edition of Singularity, an
  open source container platform designed to be simple, fast, and secure. 
+
+Package: singularity-ce-log-plugin
+Architecture: any
+Depends: singularity-ce (= ${binary:Version})
+Description: Provides a configurable logging plugin for SingularityCE.
+ Outputs to syslog via a configurable template.
+
+Package: singularity-ce-enterprise-plugin
+Architecture: any
+Depends: singularity-ce (= ${binary:Version})
+Description: Provides an enterprise command for the singularity CLI,
+ allowing query and management of a Singularity Enterprise installation.
