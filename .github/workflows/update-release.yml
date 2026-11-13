@@ -43,7 +43,7 @@ jobs:
         branch="$(git ls-remote --heads -q upstream | cut -d'	' -f2 | sed 's#refs/heads/##' | grep 'release-4' | sort -n -k2 -t. -r | head -n1)"
         echo "Rebasing onto branch $branch"
         git reset --hard origin/cras
-        git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v4 || GIT_EDITOR=true git rebase --continue
+        git rebase --onto=upstream/${branch} --rerere-autoupdate upstream/main cras-v4 || GIT_EDITOR=true git rebase --continue || GIT_EDITOR=true git rebase --continue
         echo "FORCE_RELEASE=${FORCE_RELEASE}"
         [ "${FORCE_RELEASE}" != "true" ] && [ "$(git rev-parse cras-v4)" = "$(git rev-parse origin/cras-v4)" ] && exit 0
         git push --force origin cras-v4
