@@ -33,9 +33,10 @@ for submodule in $submodules; do
 	echo "Deinited $submodule"
 done
 
+# Vendor all Go sources, including those of log-plugin / enterprise-plugin, so
+# that the package can be built without network access. The plugins are part of
+# the main Go module, and `singularity plugin compile` builds them from the
+# vendor directory of this tree (see internal/app/singularity/plugin_compile_linux.go).
 GOPATH="$ROOT_DIR"/go-deps go mod vendor && git add vendor && chmod -R ug+w go-deps && rm -rf go-deps
-
-[ -d log-plugin ] && (cd log-plugin && ln -s ../vendor && git add vendor)
-[ -d enterprise-plugin ] && (cd enterprise-plugin && ln -s ../vendor && git add vendor)
 
 popd
