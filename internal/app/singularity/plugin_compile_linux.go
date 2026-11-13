@@ -32,6 +32,7 @@ type buildToolchain struct {
 	workPath  string
 	goPath    string
 	buildTags string
+	modFlag   string
 	envs      []string
 }
 
@@ -83,6 +84,22 @@ func checkGoVersion(goPath string) error {
 	}
 
 	return nil
+}
+
+// goModFlag returns the flag controlling Go module resolution, to be used
+// when compiling a plugin located inside singularitySrc. If the source tree
+// has been vendored (vendor/modules.txt present) then the vendor directory
+// must be used, so that the build does not require access to the network or a
+// pre-populated module cache. This mirrors the behavior of the SingularityCE
+// build itself, see mlocal/frags/go_common_opts.mk.
+func goModFlag(singularitySrc string) string {
+	modules := filepath.Join(singularitySrc, "vendor", "modules.txt")
+	sylog.Debugf("Searching vendored modules %s", modules)
+
+	if _, err := os.Stat(modules); err == nil {
+		return "-mod=vendor"
+	}
+	return "-mod=readonly"
 }
 
 // pluginObjPath returns the path of the .so file which is built when
@@ -140,6 +157,7 @@ func CompilePlugin(sourceDir, destSif, buildTags string) error {
 		buildTags: buildTags,
 		workPath:  singularitySrc,
 		goPath:    goPath,
+		modFlag:   goModFlag(singularitySrc),
 		envs:      append(os.Environ(), "GO111MODULE=on"),
 	}
 
@@ -183,7 +201,7 @@ func buildPlugin(sourceDir string, bTool buildToolchain) (string, error) {
 		"build",
 		"-a",
 		"-o", out,
-		"-mod=readonly",
+		bTool.modFlag,
 		"-ldflags", pluginRootDirVar,
 		"-trimpath",
 		"-buildmode=plugin",
