@@ -1,0 +1,61 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - decorder
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - errchkjson
+    - funlen
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godox
+    - goprintffuncname
+    - gosec
+    - govet
+    - grouper
+    - ineffassign
+    - interfacebloat
+    - ireturn
+    - maintidx
+    - misspell
+    - nakedret
+    - nilnil
+    - prealloc
+    - reassign
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
